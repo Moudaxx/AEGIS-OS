@@ -10,6 +10,7 @@ impl InputSanitizer {
         let injection_patterns = vec![
             "ignore previous instructions",
             "ignore all instructions",
+            "ignore all previous",
             "disregard your instructions",
             "you are now",
             "new instructions:",
@@ -18,12 +19,22 @@ impl InputSanitizer {
             "jailbreak",
             "dan mode",
             "developer mode",
+            "pretend you are",
+            "act as if",
+            "reveal your",
+            "output your system",
+            "sudo mode",
+            "ADMIN OVERRIDE",
+            "<<SYS>>",
+            "<|im_start|>",
+            "[INST]",
+            "```system",
         ];
 
         let input_lower = input.to_lowercase();
 
         for pattern in &injection_patterns {
-            if input_lower.contains(pattern) {
+            if input_lower.contains(&pattern.to_lowercase()) {
                 return Err(format!(
                     "[AEGIS] Prompt injection detected: '{}'", pattern
                 ));
@@ -33,6 +44,11 @@ impl InputSanitizer {
         // Check length
         if input.len() > 10000 {
             return Err("[AEGIS] Input too long (max 10000 chars)".to_string());
+        }
+
+        // Check for hidden control characters
+        if input.chars().any(|c| c.is_control() && c != '\n' && c != '\r' && c != '\t') {
+            return Err("[AEGIS] Hidden control characters detected".to_string());
         }
 
         // Strip dangerous characters
@@ -51,11 +67,15 @@ impl InputSanitizer {
             "password",
             "private key",
             "secret key",
+            "/etc/passwd",
+            "/etc/shadow",
+            "AWS_SECRET",
+            "PRIVATE_KEY",
         ];
 
         let output_lower = output.to_lowercase();
         for pattern in &dangerous {
-            if output_lower.contains(pattern) {
+            if output_lower.contains(&pattern.to_lowercase()) {
                 println!("[AEGIS] WARNING: Dangerous pattern in output: '{}'", pattern);
                 return false;
             }
