@@ -1,0 +1,27 @@
+[general]
+max_agents = 100
+
+[inference]
+default_provider = "nvidia"
+fallback_chain = ["claude", "google"]
+
+[inference.nvidia]
+api_key = "${NVIDIA_NIM_API_KEY}"
+base_url = "https://integrate.api.nvidia.com/v1"
+default_model = "nvidia/nemotron-3-nano-30b-a3b"
+
+[inference.claude]
+api_key = "${ANTHROPIC_API_KEY}"
+base_url = "https://api.anthropic.com"
+default_model = "claude-sonnet-4-5-20250929"
+
+[inference.google]
+api_key = "${AIzaSyDOTcJ5cdDSNivJo8hOndpQeine4ZiFE80}"
+base_url = "https://generativelanguage.googleapis.com/v1"
+default_model = "gemini-3-flash"
+
+[guardrails]
+layers = ["nvidia-nemo", "google-armor", "aegis-policy"]
+
+[audit]
+log_ai_calls = true
