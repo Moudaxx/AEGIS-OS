@@ -12,6 +12,7 @@ mod sanitization;
 mod skill_vetting;
 mod inference;
 mod mcp;
+mod a2a;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
