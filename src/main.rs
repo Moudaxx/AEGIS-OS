@@ -14,6 +14,8 @@ mod inference;
 mod mcp;
 mod a2a;
 mod redteam;
+mod database;
+mod ros2;
 
 use anyhow::Result;
 use serde::Deserialize;
