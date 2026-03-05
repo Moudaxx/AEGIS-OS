@@ -11,7 +11,7 @@ mod guardrails;
 mod sanitization;
 mod skill_vetting;
 mod inference;
-
+mod mcp;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
