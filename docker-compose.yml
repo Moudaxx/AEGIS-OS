@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  # ─── AEGIS OS Core ───
+  aegis:
+    build: .
+    container_name: aegis-os
+    ports:
+      - "8400:8400"   # API Gateway
+      - "8401:8401"   # MCP Server
+      - "8402:8402"   # A2A Gateway
+    env_file:
+      - .env
+    volumes:
+      - ./aegis.toml:/app/aegis.toml:ro
+    depends_on:
+      - prometheus
+    networks:
+      - aegis-net
+    restart: unless-stopped
+
+  # ─── Prometheus (Metrics) ───
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aegis-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - aegis-net
+    restart: unless-stopped
+
+  # ─── Grafana (Dashboard) ───
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aegis-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=aegis-admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - aegis-net
+    restart: unless-stopped
+
+  # ─── Kali Red Team (On-demand) ───
+  kali:
+    image: kalilinux/kali-rolling
+    container_name: aegis-kali
+    profiles:
+      - redteam
+    networks:
+      - aegis-net
+    command: sleep infinity
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  aegis-net:
+    driver: bridge

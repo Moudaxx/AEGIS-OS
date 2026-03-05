@@ -16,7 +16,7 @@ mod a2a;
 mod redteam;
 mod database;
 mod ros2;
-
+mod telemetry;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
