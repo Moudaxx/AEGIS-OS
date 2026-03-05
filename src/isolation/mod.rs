@@ -135,6 +135,8 @@ impl NetworkEgress {
                 "generativelanguage.googleapis.com".to_string(),
                 "integrate.api.nvidia.com".to_string(),
                 "aistudio.google.com".to_string(),
+                "api.groq.com".to_string(),
+                "api.openai.com".to_string(),
             ],
             blocklist: vec![
                 "pastebin.com".to_string(),

@@ -26,7 +26,7 @@ use isolation::{WasmSandbox, FilesystemJail, NetworkEgress};
 use sanitization::InputSanitizer;
 use credentials::{CredentialVault, CapabilityToken};
 use skill_vetting::{Skill, SkillVetter};
-use inference::{GeminiClient, ClaudeClient, NimClient};
+use inference::{GeminiClient, ClaudeClient, NimClient, GroqClient, OpenAiClient};
 use tool_router::ToolRouter;
 use guardrails::{PolicyEngine, PolicyResult};
 use mcp::{McpClient, McpServer};
@@ -191,7 +191,9 @@ async fn main() -> Result<()> {
             let model = match provider.as_str() {
                 "google" => "gemini-2.5-flash-lite",
                 "claude" => "claude-haiku-4-5-20251001",
-                "nvidia" => "nvidia/nemotron-3-nano-30b-a3b",
+                "nvidia" => "meta/llama-3.1-8b-instruct",
+                "groq" => "llama-3.3-70b-versatile",
+                "openai" => "gpt-4o-mini",
                 _ => "unknown",
             };
             let check = policy.enforce(&agent.id.to_string(), "Hello, help me code", model, 100);
@@ -325,6 +327,30 @@ async fn main() -> Result<()> {
                         match client.chat(&prompt).await {
                             Ok(r) => println!("[AEGIS] NIM: {}", r),
                             Err(e) => println!("[AEGIS] NIM error: {}", e),
+                        }
+                    }
+                    "groq" => {
+                        let key = std::env::var("GROQ_API_KEY").unwrap_or_default();
+                        let client = GroqClient::new(&key);
+                        match client.chat(&prompt).await {
+                            Ok(r) => {
+                                println!("[AEGIS] Groq: {}", r);
+                                audit.log(AuditEvent::new(&agent.id.to_string(),
+                                    AuditEventType::InferenceCall, "Groq response", AuditRes::Success));
+                            }
+                            Err(e) => println!("[AEGIS] Groq error: {}", e),
+                        }
+                    }
+                    "openai" => {
+                        let key = std::env::var("OPENAI_API_KEY").unwrap_or_default();
+                        let client = OpenAiClient::new(&key);
+                        match client.chat(&prompt).await {
+                            Ok(r) => {
+                                println!("[AEGIS] OpenAI: {}", r);
+                                audit.log(AuditEvent::new(&agent.id.to_string(),
+                                    AuditEventType::InferenceCall, "OpenAI response", AuditRes::Success));
+                            }
+                            Err(e) => println!("[AEGIS] OpenAI error: {}", e),
                         }
                     }
                     _ => println!("[AEGIS] Unknown provider: {}", provider),

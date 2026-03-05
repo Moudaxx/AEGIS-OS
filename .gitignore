@@ -21,3 +21,4 @@ Cargo.lock
 *.log
 *.tmp
 .DS_Store
+.env
