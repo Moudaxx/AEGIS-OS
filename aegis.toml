@@ -16,7 +16,7 @@ base_url = "https://api.anthropic.com"
 default_model = "claude-sonnet-4-5-20250929"
 
 [inference.google]
-api_key = "${AIzaSyDOTcJ5cdDSNivJo8hOndpQeine4ZiFE80}"
+api_key = "${GOOGLE_AI_API_KEY}"
 base_url = "https://generativelanguage.googleapis.com/v1"
 default_model = "gemini-3-flash"
 
