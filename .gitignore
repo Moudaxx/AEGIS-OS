@@ -21,4 +21,4 @@ config/local.*
 
 # IDE
 .vscode/
-.idea/
+.idea/aegis-audit.log
