@@ -48,6 +48,12 @@ pub enum Commands {
         #[arg(short, long)]
         target: Option<String>,
     },
+    /// Start MCP HTTP server
+    Serve {
+        /// Port number (default: 8401)
+        #[arg(short, long)]
+        port: Option<u16>,
+    },
     /// Show audit logs
     Audit,
     /// Show version info

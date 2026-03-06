@@ -17,6 +17,7 @@ mod redteam;
 mod database;
 mod ros2;
 mod telemetry;
+mod server;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
@@ -395,7 +396,9 @@ async fn main() -> Result<()> {
             let report = engine.run_scan(target_name);
             report.summary();
         }
-
+        Commands::Serve { port } => {
+            server::start_server(port.unwrap_or(8401)).await;
+        }
         Commands::Audit => {
             println!("[AEGIS] Audit log: no entries yet (start an agent first)");
         }
