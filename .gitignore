@@ -1,14 +1,7 @@
-# API Keys & Secrets
+# Secrets
 .env
-.env.*
-*.env
-secrets.toml
 secrets.yaml
 secrets.json
-
-# AEGIS OS Config
-aegis.toml
-config/local.*
 **/credentials/
 **/keys/
 oracle_wallet/
@@ -17,8 +10,15 @@ oracle_wallet/
 /target
 Cargo.lock
 
+# Config (local only)
+aegis.toml
+config/local.*
+
 # Logs & Temp
 *.log
 *.tmp
 .DS_Store
-.env
+
+# IDE
+.vscode/
+.idea/
