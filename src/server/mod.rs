@@ -86,7 +86,7 @@ pub struct AgentListResponse {
     pub total: usize,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize)]
 pub struct InferenceResponse {
     pub success: bool,
     pub provider: String,
@@ -94,8 +94,8 @@ pub struct InferenceResponse {
     pub response: String,
 }
 
-#[derive(Debug, Serialize, Clone)]
-    pub struct RedTeamResponse {
+#[derive(Debug, Serialize)]
+pub struct RedTeamResponse {
     pub total_tests: usize,
     pub attacks_blocked: usize,
     pub vulnerabilities: usize,
@@ -103,7 +103,7 @@ pub struct InferenceResponse {
 }
 
 #[derive(Debug, Serialize, Clone)]
-    pub struct AuditEntry {
+pub struct AuditEntry {
     pub timestamp: String,
     pub agent_id: String,
     pub event_type: String,
@@ -223,7 +223,7 @@ async fn version() -> Json<serde_json::Value> {
         "name": "AEGIS OS",
         "version": "4.0.0",
         "layers": 12,
-        "modules": 18,
+        "modules": 21,
         "ai_backends": ["nvidia","claude","gemini","groq","openai"],
         "protocols": ["MCP","A2A","REST"],
         "red_team_tests": 16,
@@ -319,7 +319,7 @@ async fn agents_stop(
     Ok(Json(serde_json::json!({"stopped": count})))
 }
 
-// POST /api/v1/inference
+// POST /api/v1/inference — Real AI call
 async fn inference(
     State(state): State<AppState>,
     Json(req): Json<InferenceRequest>,
@@ -328,34 +328,93 @@ async fn inference(
         state.metrics.write().unwrap().requests_blocked += 1;
         return Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse { error: "Invalid token".into(), code: 401 })));
     }
-
     if let Err(e) = sanitize_input(&req.prompt) {
         state.metrics.write().unwrap().policy_blocked += 1;
         state.log_audit("system", "Inference", &req.prompt, "BLOCKED");
         return Err((StatusCode::FORBIDDEN, Json(ErrorResponse { error: e, code: 403 })));
     }
-
-    let provider = req.provider.unwrap_or("groq".into());
+    let provider = req.provider.clone().unwrap_or("groq".into());
     let model = match provider.as_str() {
         "nvidia" => "meta/llama-3.1-8b-instruct",
         "claude" => "claude-haiku-4-5-20251001",
         "gemini" => "gemini-2.5-flash-lite",
         "groq" => "llama-3.3-70b-versatile",
         "openai" => "gpt-4o-mini",
-        _ => "unknown",
+        _ => return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse {
+            error: format!("Unknown provider: {}", provider), code: 400
+        }))),
     };
-
+    let ai_response = match provider.as_str() {
+        "groq" => {
+            let key = std::env::var("GROQ_API_KEY").unwrap_or_default();
+            call_ai_backend("https://api.groq.com/openai/v1/chat/completions", &key, model, &req.prompt).await
+        }
+        "openai" => {
+            let key = std::env::var("OPENAI_API_KEY").unwrap_or_default();
+            call_ai_backend("https://api.openai.com/v1/chat/completions", &key, model, &req.prompt).await
+        }
+        "nvidia" => {
+            let key = std::env::var("NVIDIA_NIM_API_KEY").unwrap_or_default();
+            call_ai_backend("https://integrate.api.nvidia.com/v1/chat/completions", &key, model, &req.prompt).await
+        }
+        "gemini" => {
+            let key = std::env::var("GOOGLE_AI_API_KEY").unwrap_or_default();
+            call_gemini_backend(&key, model, &req.prompt).await
+        }
+        "claude" => {
+            let key = std::env::var("ANTHROPIC_API_KEY").unwrap_or_default();
+            call_claude_backend(&key, model, &req.prompt).await
+        }
+        _ => Err("Unknown provider".into()),
+    };
     state.metrics.write().unwrap().inference_calls += 1;
-    state.log_audit("system", "Inference", &format!("{}: {}", provider, &req.prompt[..req.prompt.len().min(50)]), "SUCCESS");
-    println!("[API] Inference: {} ({}) | Prompt: {}...", provider, model, &req.prompt[..req.prompt.len().min(30)]);
+    match ai_response {
+        Ok(response) => {
+            state.log_audit("system", "Inference",
+                &format!("{}: {}", provider, &req.prompt[..req.prompt.len().min(50)]), "SUCCESS");
+            println!("[API] Inference OK: {} | {}...", provider, &response[..response.len().min(80)]);
+            Ok(Json(InferenceResponse { success: true, provider, model: model.into(), response }))
+        }
+        Err(e) => {
+            state.log_audit("system", "Inference", &format!("{}: error", provider), "FAILED");
+            println!("[API] Inference ERROR: {} | {}", provider, e);
+            Ok(Json(InferenceResponse { success: false, provider, model: model.into(), response: format!("Error: {}", e) }))
+        }
+    }
+}
 
-    // In production: actually call the AI backend here
-    Ok(Json(InferenceResponse {
-        success: true,
-        provider,
-        model: model.into(),
-        response: format!("[Simulated] Response to: {}", &req.prompt[..req.prompt.len().min(50)]),
-    }))
+// ─── AI Backend Helpers ───
+async fn call_ai_backend(url: &str, key: &str, model: &str, prompt: &str) -> Result<String, String> {
+    if key.is_empty() { return Err("API key not configured".into()); }
+    let body = serde_json::json!({"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": 1024});
+    let resp = reqwest::Client::new().post(url)
+        .header("Authorization", format!("Bearer {}", key))
+        .json(&body).send().await.map_err(|e| format!("{}", e))?
+        .json::<serde_json::Value>().await.map_err(|e| format!("{}", e))?;
+    if let Some(err) = resp.get("error") { return Err(format!("API error: {}", err)); }
+    resp["choices"][0]["message"]["content"].as_str().map(String::from).ok_or("No response".into())
+}
+
+async fn call_gemini_backend(key: &str, model: &str, prompt: &str) -> Result<String, String> {
+    if key.is_empty() { return Err("API key not configured".into()); }
+    let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", model, key);
+    let body = serde_json::json!({"contents": [{"parts": [{"text": prompt}]}]});
+    let resp = reqwest::Client::new().post(&url).json(&body)
+        .send().await.map_err(|e| format!("{}", e))?
+        .json::<serde_json::Value>().await.map_err(|e| format!("{}", e))?;
+    if let Some(err) = resp.get("error") { return Err(format!("{}", err)); }
+    resp["candidates"][0]["content"]["parts"][0]["text"].as_str().map(String::from).ok_or("No response".into())
+}
+
+async fn call_claude_backend(key: &str, model: &str, prompt: &str) -> Result<String, String> {
+    if key.is_empty() { return Err("API key not configured".into()); }
+    let body = serde_json::json!({"model": model, "max_tokens": 1024, "messages": [{"role": "user", "content": prompt}]});
+    let resp = reqwest::Client::new().post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", key).header("anthropic-version", "2023-06-01")
+        .json(&body).send().await.map_err(|e| format!("{}", e))?
+        .json::<serde_json::Value>().await.map_err(|e| format!("{}", e))?;
+    if let Some(err) = resp.get("error") { return Err(format!("{}", err)); }
+    resp["content"][0]["text"].as_str().map(String::from).ok_or("No response".into())
 }
 
 // POST /api/v1/redteam
@@ -414,14 +473,11 @@ async fn metrics(State(state): State<AppState>) -> String {
 // ═══ Router ═══
 pub fn create_router(state: AppState) -> Router {
     Router::new()
-        // Public
         .route("/health", get(health))
         .route("/version", get(version))
         .route("/metrics", get(metrics))
-        // MCP
         .route("/mcp/tools/list", post(tools_list))
         .route("/mcp/tools/call", post(tools_call))
-        // REST API
         .route("/api/v1/agents/run", post(agents_run))
         .route("/api/v1/agents/stop", post(agents_stop))
         .route("/api/v1/agents", get(agents_list))
@@ -449,7 +505,7 @@ pub async fn start_server(port: u16) {
     println!("[SERVER]   POST /api/v1/agents/run    REST (auth)");
     println!("[SERVER]   POST /api/v1/agents/stop   REST (auth)");
     println!("[SERVER]   GET  /api/v1/agents        REST");
-    println!("[SERVER]   POST /api/v1/inference     REST (auth)");
+    println!("[SERVER]   POST /api/v1/inference     REST (auth) — REAL AI");
     println!("[SERVER]   POST /api/v1/redteam       REST (auth)");
     println!("[SERVER]   GET  /api/v1/audit         REST");
     println!("═══════════════════════════════════════════");
