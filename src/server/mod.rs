@@ -672,3 +672,35 @@ pub async fn start_server(port: u16) {
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
+// ═══ Start TLS Server ═══
+pub async fn start_tls_server(port: u16) {
+    let state = AppState::new();
+    let app = create_router(state);
+    let addr = format!("0.0.0.0:{}", port);
+
+    let cert_path = "certs/cert.pem";
+    let key_path = "certs/key.pem";
+
+    if !std::path::Path::new(cert_path).exists() {
+        println!("[SERVER] TLS certs not found! Generate with:");
+        println!("[SERVER]   openssl req -x509 -newkey rsa:2048 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes");
+        println!("[SERVER] Falling back to HTTP...");
+        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+        axum::serve(listener, app).await.unwrap();
+        return;
+    }
+
+    println!("⛊ AEGIS OS v4.0 — HTTPS Server (TLS)");
+    println!("═══════════════════════════════════════════");
+    println!("[SERVER] Listening on https://{}", addr);
+    println!("[SERVER] Cert: {} | Key: {}", cert_path, key_path);
+    println!("═══════════════════════════════════════════");
+
+    let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(cert_path, key_path)
+        .await.expect("Failed to load TLS config");
+
+    axum_server::bind_rustls(addr.parse().unwrap(), tls_config)
+        .serve(app.into_make_service())
+        .await.unwrap();
+}
+// ═══ Start TLS Server ═══

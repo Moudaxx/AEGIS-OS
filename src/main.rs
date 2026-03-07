@@ -399,6 +399,9 @@ async fn main() -> Result<()> {
         Commands::Serve { port } => {
             server::start_server(port.unwrap_or(8401)).await;
         }
+        Commands::ServeTls { port } => {
+            server::start_tls_server(port.unwrap_or(8443)).await;
+        }
         Commands::Audit => {
             println!("[AEGIS] Audit log: no entries yet (start an agent first)");
         }

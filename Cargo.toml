@@ -20,3 +20,4 @@ wasmtime = "27"
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }

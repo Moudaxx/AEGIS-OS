@@ -18,8 +18,8 @@ pub enum Commands {
         /// Agent name
         #[arg(short, long)]
         name: String,
-        /// AI provider (nvidia, claude, google)
-        #[arg(short, long, default_value = "google")]
+        /// AI provider (nvidia, claude, google, groq, openai)
+        #[arg(short, long, default_value = "groq")]
         provider: String,
     },
     /// Stop a running agent
@@ -48,9 +48,15 @@ pub enum Commands {
         #[arg(short, long)]
         target: Option<String>,
     },
-    /// Start MCP HTTP server
+    /// Start HTTP server
     Serve {
         /// Port number (default: 8401)
+        #[arg(short, long)]
+        port: Option<u16>,
+    },
+    /// Start HTTPS server with TLS
+    ServeTls {
+        /// Port number (default: 8443)
         #[arg(short, long)]
         port: Option<u16>,
     },
