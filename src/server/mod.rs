@@ -9,6 +9,33 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+// ═══ RBAC ═══
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub enum UserRole {
+    Admin,
+    Operator,
+    Viewer,
+    Agent,
+}
+
+impl UserRole {
+    pub fn can_run_agents(&self) -> bool {
+        matches!(self, UserRole::Admin | UserRole::Operator)
+    }
+    pub fn can_inference(&self) -> bool {
+        matches!(self, UserRole::Admin | UserRole::Operator | UserRole::Agent)
+    }
+    pub fn can_redteam(&self) -> bool {
+        matches!(self, UserRole::Admin)
+    }
+    pub fn can_stop(&self) -> bool {
+        matches!(self, UserRole::Admin | UserRole::Operator)
+    }
+    pub fn can_tools(&self) -> bool {
+        matches!(self, UserRole::Admin | UserRole::Operator | UserRole::Agent)
+    }
+}
+
 // ═══ Request/Response Types ═══
 #[derive(Debug, Deserialize)]
 pub struct ToolCallRequest {
@@ -125,6 +152,7 @@ pub struct DashboardData {
     pub redteam_score: String,
     pub recent_audit: Vec<AuditEntry>,
     pub providers: Vec<ProviderStatus>,
+    pub roles: Vec<RoleInfo>,
 }
 
 #[derive(Debug, Serialize)]
@@ -133,13 +161,19 @@ pub struct ProviderStatus {
     pub status: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct RoleInfo {
+    pub role: String,
+    pub permissions: Vec<String>,
+}
+
 // ═══ Shared App State ═══
 #[derive(Clone)]
 pub struct AppState {
     pub tools: Arc<RwLock<Vec<ToolInfo>>>,
     pub agents: Arc<RwLock<Vec<AgentInfo>>>,
     pub audit_log: Arc<RwLock<Vec<AuditEntry>>>,
-    pub valid_tokens: Arc<RwLock<Vec<String>>>,
+    pub valid_tokens: Arc<RwLock<HashMap<String, UserRole>>>,
     pub metrics: Arc<RwLock<ServerMetrics>>,
 }
 
@@ -153,6 +187,7 @@ pub struct ServerMetrics {
     pub agents_started: u64,
     pub agents_stopped: u64,
     pub redteam_scans: u64,
+    pub auth_denied: u64,
     pub started_at: std::time::Instant,
 }
 
@@ -169,18 +204,23 @@ impl AppState {
             ToolInfo { name: "aegis.list_tools".into(), description: "List available tools".into() },
         ];
 
-        // Load existing audit log from file
         let existing_audit = Self::load_audit_from_file();
-        let audit_count = existing_audit.len();
-        if audit_count > 0 {
-            println!("[AUDIT] Loaded {} existing events from aegis-audit.log", audit_count);
+        if !existing_audit.is_empty() {
+            println!("[AUDIT] Loaded {} events from aegis-audit.log", existing_audit.len());
         }
+
+        let mut tokens = HashMap::new();
+        tokens.insert("aegis-admin-token".to_string(), UserRole::Admin);
+        tokens.insert("aegis-operator-token".to_string(), UserRole::Operator);
+        tokens.insert("aegis-viewer-token".to_string(), UserRole::Viewer);
+        tokens.insert("aegis-agent-token".to_string(), UserRole::Agent);
+        tokens.insert("aegis-secret-token".to_string(), UserRole::Admin);
 
         AppState {
             tools: Arc::new(RwLock::new(tools)),
             agents: Arc::new(RwLock::new(Vec::new())),
             audit_log: Arc::new(RwLock::new(existing_audit)),
-            valid_tokens: Arc::new(RwLock::new(vec!["aegis-secret-token".into()])),
+            valid_tokens: Arc::new(RwLock::new(tokens)),
             metrics: Arc::new(RwLock::new(ServerMetrics {
                 requests_total: 0,
                 requests_blocked: 0,
@@ -190,6 +230,7 @@ impl AppState {
                 agents_started: 0,
                 agents_stopped: 0,
                 redteam_scans: 0,
+                auth_denied: 0,
                 started_at: std::time::Instant::now(),
             })),
         }
@@ -203,10 +244,8 @@ impl AppState {
             action: action.into(),
             result: result.into(),
         };
-        // Save to memory
         let mut log = self.audit_log.write().unwrap();
         log.push(entry.clone());
-        // Save to file (persistent)
         let _ = Self::append_to_file(&entry);
     }
 
@@ -222,20 +261,50 @@ impl AppState {
 
     fn load_audit_from_file() -> Vec<AuditEntry> {
         match std::fs::read_to_string("aegis-audit.log") {
-            Ok(content) => {
-                content.lines()
-                    .filter_map(|line| serde_json::from_str::<AuditEntry>(line).ok())
-                    .collect()
-            }
+            Ok(content) => content.lines()
+                .filter_map(|line| serde_json::from_str::<AuditEntry>(line).ok())
+                .collect(),
             Err(_) => Vec::new(),
         }
     }
 }
 
-fn check_auth(state: &AppState, token: &Option<String>) -> bool {
+// ═══ Auth + RBAC ═══
+fn check_auth(state: &AppState, token: &Option<String>) -> Option<UserRole> {
     match token {
-        Some(t) => state.valid_tokens.read().unwrap().contains(t),
-        None => false,
+        Some(t) => state.valid_tokens.read().unwrap().get(t).cloned(),
+        None => None,
+    }
+}
+
+fn require_auth(state: &AppState, token: &Option<String>) -> Result<UserRole, (StatusCode, Json<ErrorResponse>)> {
+    match check_auth(state, token) {
+        Some(role) => Ok(role),
+        None => {
+            state.metrics.write().unwrap().auth_denied += 1;
+            state.log_audit("unknown", "Auth", "Authentication failed", "DENIED");
+            Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse {
+                error: "Invalid or missing auth token".into(), code: 401
+            })))
+        }
+    }
+}
+
+fn require_role(role: &UserRole, required: &str) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    let allowed = match required {
+        "run_agents" => role.can_run_agents(),
+        "stop_agents" => role.can_stop(),
+        "inference" => role.can_inference(),
+        "redteam" => role.can_redteam(),
+        "tools" => role.can_tools(),
+        _ => false,
+    };
+    if allowed {
+        Ok(())
+    } else {
+        Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
+            error: format!("Role {:?} cannot {}", role, required), code: 403
+        })))
     }
 }
 
@@ -277,14 +346,10 @@ async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
 // GET /version
 async fn version() -> Json<serde_json::Value> {
     Json(serde_json::json!({
-        "name": "AEGIS OS",
-        "version": "4.0.0",
-        "layers": 12,
-        "modules": 21,
+        "name": "AEGIS OS", "version": "4.0.0", "layers": 12, "modules": 21,
         "ai_backends": ["nvidia","claude","gemini","groq","openai"],
-        "protocols": ["MCP","A2A","REST"],
-        "red_team_tests": 16,
-        "security_tests": 75
+        "protocols": ["MCP","A2A","REST"], "red_team_tests": 16, "security_tests": 75,
+        "rbac_roles": ["admin","operator","viewer","agent"]
     }))
 }
 
@@ -293,7 +358,6 @@ async fn dashboard(State(state): State<AppState>) -> Json<DashboardData> {
     let m = state.metrics.read().unwrap();
     let agents = state.agents.read().unwrap();
     let audit = state.audit_log.read().unwrap();
-
     let recent: Vec<AuditEntry> = audit.iter().rev().take(10).cloned().collect();
 
     let providers = vec![
@@ -302,6 +366,13 @@ async fn dashboard(State(state): State<AppState>) -> Json<DashboardData> {
         ProviderStatus { name: "openai".into(), status: if std::env::var("OPENAI_API_KEY").is_ok() { "configured".into() } else { "not configured".into() } },
         ProviderStatus { name: "gemini".into(), status: if std::env::var("GOOGLE_AI_API_KEY").is_ok() { "configured".into() } else { "not configured".into() } },
         ProviderStatus { name: "claude".into(), status: if std::env::var("ANTHROPIC_API_KEY").is_ok() { "configured".into() } else { "not configured".into() } },
+    ];
+
+    let roles = vec![
+        RoleInfo { role: "admin".into(), permissions: vec!["all".into()] },
+        RoleInfo { role: "operator".into(), permissions: vec!["run_agents".into(),"stop_agents".into(),"inference".into(),"tools".into(),"view".into()] },
+        RoleInfo { role: "viewer".into(), permissions: vec!["view".into()] },
+        RoleInfo { role: "agent".into(), permissions: vec!["inference".into(),"tools".into(),"view".into()] },
     ];
 
     Json(DashboardData {
@@ -315,6 +386,7 @@ async fn dashboard(State(state): State<AppState>) -> Json<DashboardData> {
         redteam_score: "100%".into(),
         recent_audit: recent,
         providers,
+        roles,
     })
 }
 
@@ -331,11 +403,8 @@ async fn tools_call(
 ) -> Result<Json<ToolCallResponse>, (StatusCode, Json<ErrorResponse>)> {
     { state.metrics.write().unwrap().requests_total += 1; }
 
-    if !check_auth(&state, &req.auth_token) {
-        state.metrics.write().unwrap().requests_blocked += 1;
-        state.log_audit("unknown", "ToolCall", &req.tool, "UNAUTHORIZED");
-        return Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse { error: "Invalid token".into(), code: 401 })));
-    }
+    let role = require_auth(&state, &req.auth_token)?;
+    require_role(&role, "tools")?;
 
     if let Err(e) = sanitize_input(&req.tool) {
         state.metrics.write().unwrap().policy_blocked += 1;
@@ -347,8 +416,8 @@ async fn tools_call(
     match tools.iter().find(|t| t.name == req.tool) {
         Some(t) => {
             state.metrics.write().unwrap().tool_calls += 1;
-            state.log_audit("system", "ToolCall", &t.name, "SUCCESS");
-            println!("[API] Tool called: {}", t.name);
+            state.log_audit("system", "ToolCall", &format!("{} (role: {:?})", t.name, role), "SUCCESS");
+            println!("[API] Tool: {} | Role: {:?}", t.name, role);
             Ok(Json(ToolCallResponse { success: true, tool: t.name.clone(), result: format!("Executed: {}", t.description) }))
         }
         None => Err((StatusCode::NOT_FOUND, Json(ErrorResponse { error: format!("Tool '{}' not found", req.tool), code: 404 })))
@@ -360,10 +429,8 @@ async fn agents_run(
     State(state): State<AppState>,
     Json(req): Json<RunAgentRequest>,
 ) -> Result<Json<AgentInfo>, (StatusCode, Json<ErrorResponse>)> {
-    if !check_auth(&state, &req.auth_token) {
-        state.metrics.write().unwrap().requests_blocked += 1;
-        return Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse { error: "Invalid token".into(), code: 401 })));
-    }
+    let role = require_auth(&state, &req.auth_token)?;
+    require_role(&role, "run_agents")?;
 
     let provider = req.provider.unwrap_or("groq".into());
     let agent = AgentInfo {
@@ -376,8 +443,8 @@ async fn agents_run(
 
     state.agents.write().unwrap().push(agent.clone());
     state.metrics.write().unwrap().agents_started += 1;
-    state.log_audit(&agent.id, "AgentStart", &format!("Started {} with {}", req.name, provider), "SUCCESS");
-    println!("[API] Agent started: {} ({}) | ID: {}", req.name, provider, agent.id);
+    state.log_audit(&agent.id, "AgentStart", &format!("{} with {} (role: {:?})", req.name, provider, role), "SUCCESS");
+    println!("[API] Agent started: {} ({}) | Role: {:?}", req.name, provider, role);
 
     Ok(Json(agent))
 }
@@ -393,16 +460,15 @@ async fn agents_stop(
     State(state): State<AppState>,
     Json(req): Json<AuthRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    if !check_auth(&state, &req.auth_token) {
-        return Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse { error: "Invalid token".into(), code: 401 })));
-    }
+    let role = require_auth(&state, &req.auth_token)?;
+    require_role(&role, "stop_agents")?;
 
     let mut agents = state.agents.write().unwrap();
     let count = agents.len();
     agents.clear();
     state.metrics.write().unwrap().agents_stopped += count as u64;
-    state.log_audit("system", "AgentStop", &format!("Stopped {} agents", count), "SUCCESS");
-    println!("[API] Stopped {} agents", count);
+    state.log_audit("system", "AgentStop", &format!("Stopped {} (role: {:?})", count, role), "SUCCESS");
+    println!("[API] Stopped {} agents | Role: {:?}", count, role);
 
     Ok(Json(serde_json::json!({"stopped": count})))
 }
@@ -412,10 +478,9 @@ async fn inference(
     State(state): State<AppState>,
     Json(req): Json<InferenceRequest>,
 ) -> Result<Json<InferenceResponse>, (StatusCode, Json<ErrorResponse>)> {
-    if !check_auth(&state, &req.auth_token) {
-        state.metrics.write().unwrap().requests_blocked += 1;
-        return Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse { error: "Invalid token".into(), code: 401 })));
-    }
+    let role = require_auth(&state, &req.auth_token)?;
+    require_role(&role, "inference")?;
+
     if let Err(e) = sanitize_input(&req.prompt) {
         state.metrics.write().unwrap().policy_blocked += 1;
         state.log_audit("system", "Inference", &req.prompt, "BLOCKED");
@@ -459,13 +524,12 @@ async fn inference(
     match ai_response {
         Ok(response) => {
             state.log_audit("system", "Inference",
-                &format!("{}: {}", provider, &req.prompt[..req.prompt.len().min(50)]), "SUCCESS");
-            println!("[API] Inference OK: {} | {}...", provider, &response[..response.len().min(80)]);
+                &format!("{}: {} (role: {:?})", provider, &req.prompt[..req.prompt.len().min(50)], role), "SUCCESS");
+            println!("[API] Inference OK: {} | Role: {:?}", provider, role);
             Ok(Json(InferenceResponse { success: true, provider, model: model.into(), response }))
         }
         Err(e) => {
             state.log_audit("system", "Inference", &format!("{}: error", provider), "FAILED");
-            println!("[API] Inference ERROR: {} | {}", provider, e);
             Ok(Json(InferenceResponse { success: false, provider, model: model.into(), response: format!("Error: {}", e) }))
         }
     }
@@ -510,19 +574,15 @@ async fn redteam(
     State(state): State<AppState>,
     Json(req): Json<AuthRequest>,
 ) -> Result<Json<RedTeamResponse>, (StatusCode, Json<ErrorResponse>)> {
-    if !check_auth(&state, &req.auth_token) {
-        return Err((StatusCode::UNAUTHORIZED, Json(ErrorResponse { error: "Invalid token".into(), code: 401 })));
-    }
+    let role = require_auth(&state, &req.auth_token)?;
+    require_role(&role, "redteam")?;
 
     state.metrics.write().unwrap().redteam_scans += 1;
-    state.log_audit("system", "RedTeam", "Full scan — 16/16 blocked", "SUCCESS");
-    println!("[API] Red Team scan triggered");
+    state.log_audit("system", "RedTeam", &format!("Full scan (role: {:?})", role), "SUCCESS");
+    println!("[API] Red Team | Role: {:?}", role);
 
     Ok(Json(RedTeamResponse {
-        total_tests: 16,
-        attacks_blocked: 16,
-        vulnerabilities: 0,
-        score: "100%".into(),
+        total_tests: 16, attacks_blocked: 16, vulnerabilities: 0, score: "100%".into(),
     }))
 }
 
@@ -546,6 +606,7 @@ async fn metrics(State(state): State<AppState>) -> String {
          # TYPE aegis_tool_calls_total counter\naegis_tool_calls_total {}\n\
          # TYPE aegis_inference_calls_total counter\naegis_inference_calls_total {}\n\
          # TYPE aegis_policy_blocked counter\naegis_policy_blocked {}\n\
+         # TYPE aegis_auth_denied_total counter\naegis_auth_denied_total {}\n\
          # TYPE aegis_agents_started_total counter\naegis_agents_started_total {}\n\
          # TYPE aegis_agents_stopped_total counter\naegis_agents_stopped_total {}\n\
          # TYPE aegis_agents_running gauge\naegis_agents_running {}\n\
@@ -555,9 +616,9 @@ async fn metrics(State(state): State<AppState>) -> String {
          # TYPE aegis_audit_events_total gauge\naegis_audit_events_total {}\n\
          # TYPE aegis_uptime_seconds gauge\naegis_uptime_seconds {}\n",
         m.requests_total, m.requests_blocked, m.tool_calls,
-        m.inference_calls, m.policy_blocked, m.agents_started,
-        m.agents_stopped, agents.len(), tools.len(),
-        m.redteam_scans, audit.len(), uptime
+        m.inference_calls, m.policy_blocked, m.auth_denied,
+        m.agents_started, m.agents_stopped, agents.len(),
+        tools.len(), m.redteam_scans, audit.len(), uptime
     )
 }
 
@@ -585,21 +646,26 @@ pub async fn start_server(port: u16) {
     let app = create_router(state);
 
     let addr = format!("0.0.0.0:{}", port);
-    println!("⛊ AEGIS OS v4.0 — HTTP Server");
+    println!("⛊ AEGIS OS v4.0 — HTTP Server + RBAC");
     println!("═══════════════════════════════════════════");
     println!("[SERVER] Listening on {}", addr);
+    println!("[SERVER] RBAC Tokens:");
+    println!("[SERVER]   aegis-admin-token     → Admin (full access)");
+    println!("[SERVER]   aegis-operator-token  → Operator (run/stop/inference)");
+    println!("[SERVER]   aegis-viewer-token    → Viewer (read-only)");
+    println!("[SERVER]   aegis-agent-token     → Agent (inference + tools)");
     println!("[SERVER] Endpoints:");
     println!("[SERVER]   GET  /health              Public");
     println!("[SERVER]   GET  /version              Public");
     println!("[SERVER]   GET  /metrics              Prometheus");
-    println!("[SERVER]   GET  /api/v1/dashboard     Dashboard (JSON)");
+    println!("[SERVER]   GET  /api/v1/dashboard     Dashboard");
     println!("[SERVER]   POST /mcp/tools/list       MCP");
-    println!("[SERVER]   POST /mcp/tools/call       MCP (auth)");
-    println!("[SERVER]   POST /api/v1/agents/run    REST (auth)");
-    println!("[SERVER]   POST /api/v1/agents/stop   REST (auth)");
+    println!("[SERVER]   POST /mcp/tools/call       MCP (auth + RBAC)");
+    println!("[SERVER]   POST /api/v1/agents/run    REST (admin/operator)");
+    println!("[SERVER]   POST /api/v1/agents/stop   REST (admin/operator)");
     println!("[SERVER]   GET  /api/v1/agents        REST");
-    println!("[SERVER]   POST /api/v1/inference     REST (auth) — REAL AI");
-    println!("[SERVER]   POST /api/v1/redteam       REST (auth)");
+    println!("[SERVER]   POST /api/v1/inference     REST (admin/operator/agent)");
+    println!("[SERVER]   POST /api/v1/redteam       REST (admin only)");
     println!("[SERVER]   GET  /api/v1/audit         REST (persistent)");
     println!("═══════════════════════════════════════════");
 
