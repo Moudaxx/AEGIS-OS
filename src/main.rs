@@ -18,6 +18,7 @@ mod database;
 mod ros2;
 mod telemetry;
 mod server;
+mod kali;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;

@@ -378,3 +378,45 @@ impl OpenAiClient {
             .unwrap_or_else(|| "No response".to_string()))
     }
 }
+// ═══════════════════════════════════════════
+// NVIDIA Cosmos Reason Client (Robotics)
+// ═══════════════════════════════════════════
+pub struct CosmosClient {
+    api_key: String,
+    client: Client,
+}
+
+impl CosmosClient {
+    pub fn new(api_key: &str) -> Self {
+        CosmosClient {
+            api_key: api_key.to_string(),
+            client: Client::new(),
+        }
+    }
+
+    pub async fn reason(&self, scenario: &str) -> Result<String> {
+        if self.api_key.is_empty() {
+            return Ok("[Cosmos] API key not configured".to_string());
+        }
+        let request = serde_json::json!({
+            "model": "nvidia/cosmos-reason1-7b",
+            "messages": [{
+                "role": "user",
+                "content": format!("Analyze this robotics scenario for safety: {}", scenario)
+            }],
+            "max_tokens": 1024
+        });
+        let response = self.client
+            .post("https://integrate.api.nvidia.com/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&request)
+            .send().await?
+            .json::<serde_json::Value>().await?;
+        if let Some(err) = response.get("error") {
+            return Ok(format!("Cosmos Error: {}", err));
+        }
+        Ok(response["choices"][0]["message"]["content"]
+            .as_str().map(String::from)
+            .unwrap_or_else(|| "No response".to_string()))
+    }
+}

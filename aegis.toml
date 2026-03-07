@@ -2,26 +2,75 @@
 max_agents = 100
 
 [inference]
-default_provider = "nvidia"
-fallback_chain = ["claude", "google"]
+default_provider = "groq"
+fallback_chain = ["openai", "nvidia", "gemini", "claude"]
 
 [inference.nvidia]
 api_key = "${NVIDIA_NIM_API_KEY}"
 base_url = "https://integrate.api.nvidia.com/v1"
-default_model = "nvidia/nemotron-3-nano-30b-a3b"
+default_model = "meta/llama-3.1-8b-instruct"
 
 [inference.claude]
 api_key = "${ANTHROPIC_API_KEY}"
-base_url = "https://api.anthropic.com"
-default_model = "claude-sonnet-4-5-20250929"
+base_url = "https://api.anthropic.com/v1"
+default_model = "claude-haiku-4-5-20251001"
 
 [inference.google]
 api_key = "${GOOGLE_AI_API_KEY}"
-base_url = "https://generativelanguage.googleapis.com/v1"
-default_model = "gemini-3-flash"
+base_url = "https://generativelanguage.googleapis.com/v1beta"
+default_model = "gemini-2.5-flash-lite"
+
+[inference.groq]
+api_key = "${GROQ_API_KEY}"
+base_url = "https://api.groq.com/openai/v1"
+default_model = "llama-3.3-70b-versatile"
+
+[inference.openai]
+api_key = "${OPENAI_API_KEY}"
+base_url = "https://api.openai.com/v1"
+default_model = "gpt-4o-mini"
+
+[inference.cosmos]
+api_key = "${NVIDIA_NIM_API_KEY}"
+base_url = "https://integrate.api.nvidia.com/v1"
+default_model = "nvidia/cosmos-reason1-7b"
 
 [guardrails]
 layers = ["nvidia-nemo", "google-armor", "aegis-policy"]
 
+[protocols]
+mcp_server = true
+mcp_port = 8401
+a2a_server = true
+a2a_port = 8402
+
+[red_team]
+enabled = true
+image = "kalilinux/kali-rolling"
+kali_mcp_port = 8403
+schedule = "daily"
+
+[database.oracle]
+url = "${ORACLE_DB_URL}"
+sql_firewall = true
+
+[telemetry]
+export = "prometheus"
+metrics_port = 8401
+
 [audit]
 log_ai_calls = true
+persistent_file = "aegis-audit.log"
+siem_export = ["sentinel", "secops"]
+
+[server]
+http_port = 8401
+tls_port = 8443
+cert_path = "certs/cert.pem"
+key_path = "certs/key.pem"
+
+[rbac]
+admin_token = "aegis-admin-token"
+operator_token = "aegis-operator-token"
+viewer_token = "aegis-viewer-token"
+agent_token = "aegis-agent-token"
