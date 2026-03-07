@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS OS — Secure AI Agent Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; background: #0a0a1a; }
+        .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a2a2a 100%); }
+        .logo { font-size: 5rem; margin-bottom: 1rem; }
+        h1 { font-size: 3.5rem; color: #00d4aa; margin-bottom: 0.5rem; }
+        .subtitle { font-size: 1.3rem; color: #8899aa; margin-bottom: 2rem; }
+        .badges { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
+        .badge { padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .badge-green { background: #00d4aa22; color: #00d4aa; border: 1px solid #00d4aa44; }
+        .badge-blue { background: #3388ff22; color: #3388ff; border: 1px solid #3388ff44; }
+        .badge-purple { background: #8855ff22; color: #8855ff; border: 1px solid #8855ff44; }
+        .badge-orange { background: #ff885522; color: #ff8855; border: 1px solid #ff885544; }
+        .cta { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
+        .btn { padding: 0.8rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1rem; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: #00d4aa; color: #0a0a1a; }
+        .btn-secondary { background: transparent; color: #00d4aa; border: 2px solid #00d4aa; }
+        .layers { max-width: 700px; width: 100%; margin: 2rem auto; }
+        .layer { display: flex; align-items: center; padding: 0.6rem 1.2rem; margin: 0.3rem 0; border-radius: 6px; background: #ffffff08; border-left: 3px solid #00d4aa; }
+        .layer-num { color: #00d4aa; font-weight: 700; margin-right: 1rem; min-width: 2rem; }
+        .layer-name { color: #ccd; font-size: 0.95rem; }
+        .section { padding: 4rem 2rem; max-width: 900px; margin: 0 auto; }
+        .section h2 { font-size: 2rem; color: #00d4aa; margin-bottom: 1.5rem; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+        .card { background: #ffffff08; border: 1px solid #ffffff15; border-radius: 10px; padding: 1.5rem; }
+        .card h3 { color: #00d4aa; margin-bottom: 0.5rem; }
+        .card p { color: #8899aa; font-size: 0.9rem; line-height: 1.6; }
+        .stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; margin: 2rem 0; }
+        .stat { text-align: center; }
+        .stat-num { font-size: 2.5rem; font-weight: 800; color: #00d4aa; }
+        .stat-label { color: #8899aa; font-size: 0.9rem; }
+        .code-block { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; overflow-x: auto; }
+        .code-block code { color: #c9d1d9; font-family: 'Consolas', monospace; font-size: 0.9rem; white-space: pre; }
+        .footer { text-align: center; padding: 2rem; color: #556; border-top: 1px solid #ffffff10; }
+        .providers { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin: 1.5rem 0; }
+        .provider { padding: 0.5rem 1.2rem; border-radius: 6px; background: #ffffff08; border: 1px solid #ffffff15; color: #aab; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div class="logo">⛊</div>
+        <h1>AEGIS OS</h1>
+        <p class="subtitle">Secure AI Agent Execution Platform</p>
+        <div class="badges">
+            <span class="badge badge-green">12 Security Layers</span>
+            <span class="badge badge-blue">5 AI Backends</span>
+            <span class="badge badge-purple">RBAC + TLS</span>
+            <span class="badge badge-orange">Built in Rust</span>
+        </div>
+        <div class="cta">
+            <a href="https://github.com/Moudaxx/AEGIS-OS" class="btn btn-primary">GitHub Repository</a>
+            <a href="https://github.com/Moudaxx/AEGIS-OS/releases" class="btn btn-secondary">Download v4.0.0</a>
+        </div>
+        <div class="stats">
+            <div class="stat"><div class="stat-num">12</div><div class="stat-label">Security Layers</div></div>
+            <div class="stat"><div class="stat-num">75/75</div><div class="stat-label">Tests Passing</div></div>
+            <div class="stat"><div class="stat-num">16/16</div><div class="stat-label">Attacks Blocked</div></div>
+            <div class="stat"><div class="stat-num">21</div><div class="stat-label">Rust Modules</div></div>
+        </div>
+        <div class="layers">
+            <div class="layer"><span class="layer-num">1</span><span class="layer-name">CLI / API Gateway / MCP Server / A2A</span></div>
+            <div class="layer"><span class="layer-num">2</span><span class="layer-name">AI Inference (NVIDIA + Claude + Gemini + Groq + OpenAI)</span></div>
+            <div class="layer"><span class="layer-num">3</span><span class="layer-name">Policy Engine + Guardrails (5 rules)</span></div>
+            <div class="layer"><span class="layer-num">4</span><span class="layer-name">Input Sanitization (21 patterns)</span></div>
+            <div class="layer"><span class="layer-num">5</span><span class="layer-name">Skill Vetting Pipeline</span></div>
+            <div class="layer"><span class="layer-num">6</span><span class="layer-name">API Gateway + Rate Limiting + RBAC</span></div>
+            <div class="layer"><span class="layer-num">7</span><span class="layer-name">Tool Router (15 tools + Kali)</span></div>
+            <div class="layer"><span class="layer-num">8</span><span class="layer-name">MCP Client/Server + A2A Gateway</span></div>
+            <div class="layer"><span class="layer-num">9</span><span class="layer-name">WASM Sandbox + Filesystem Jail</span></div>
+            <div class="layer"><span class="layer-num">10</span><span class="layer-name">State Integrity Monitor + Drift Detection</span></div>
+            <div class="layer"><span class="layer-num">11</span><span class="layer-name">Credential Vault + Capability Tokens</span></div>
+            <div class="layer"><span class="layer-num">12</span><span class="layer-name">Runtime Risk Scoring (4D) + Audit + SIEM</span></div>
+        </div>
+    </div>
+    <div class="section">
+        <h2>AI Backends</h2>
+        <div class="providers">
+            <span class="provider">NVIDIA NIM</span>
+            <span class="provider">Groq (LLaMA 3.3)</span>
+            <span class="provider">OpenAI (GPT-4o)</span>
+            <span class="provider">Google Gemini</span>
+            <span class="provider">Anthropic Claude</span>
+        </div>
+    </div>
+    <div class="section">
+        <h2>Quick Start</h2>
+        <div class="code-block"><code>git clone https://github.com/Moudaxx/AEGIS-OS.git
+cd AEGIS-OS
+cp .env.example .env    # Add your API keys
+cargo build
+cargo run -- serve       # Start HTTP server on :8401
+cargo run -- run --name my-agent --provider groq
+cargo run -- red-team    # 16/16 attacks blocked</code></div>
+    </div>
+    <div class="section">
+        <h2>Features</h2>
+        <div class="grid">
+            <div class="card"><h3>Real HTTP Server</h3><p>12 endpoints powered by Axum — agents, inference, tools, audit, red team, metrics, dashboard.</p></div>
+            <div class="card"><h3>RBAC</h3><p>4 roles: Admin, Operator, Viewer, Agent. Each with specific permissions enforced on every request.</p></div>
+            <div class="card"><h3>TLS/HTTPS</h3><p>Encrypted communications with self-signed or CA certs. serve-tls command ready.</p></div>
+            <div class="card"><h3>Red Team Mode</h3><p>16 automated attack tests across 10 categories. 100% blocked. Self-testing security.</p></div>
+            <div class="card"><h3>MCP + A2A</h3><p>Model Context Protocol server + Agent-to-Agent gateway with trust levels and policy routing.</p></div>
+            <div class="card"><h3>Docker Ready</h3><p>Docker Compose with AEGIS + Prometheus + Grafana. One command deployment.</p></div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>⛊ AEGIS OS — Because AI agents deserve security too.</p>
+        <p style="margin-top: 0.5rem;">MIT License | <a href="https://github.com/Moudaxx/AEGIS-OS" style="color: #00d4aa;">GitHub</a></p>
+    </div>
+</body>
+</html>
