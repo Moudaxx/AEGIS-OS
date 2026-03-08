@@ -22,6 +22,8 @@ mod kali;
 mod rag_security;
 mod privacy;
 mod extraction_detect;
+mod hallucination;
+mod watermark;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;

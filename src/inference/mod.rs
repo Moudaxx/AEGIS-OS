@@ -420,3 +420,87 @@ impl CosmosClient {
             .unwrap_or_else(|| "No response".to_string()))
     }
 }
+// ═══════════════════════════════════════════
+// Ollama Client (Local AI — No Internet)
+// ═══════════════════════════════════════════
+pub struct OllamaClient {
+    base_url: String,
+    client: Client,
+}
+
+impl OllamaClient {
+    pub fn new(base_url: &str) -> Self {
+        let url = if base_url.is_empty() { "http://localhost:11434" } else { base_url };
+        OllamaClient { base_url: url.to_string(), client: Client::new() }
+    }
+
+    pub async fn chat(&self, prompt: &str, model: &str) -> Result<String> {
+        let m = if model.is_empty() { "llama3.2" } else { model };
+        let body = serde_json::json!({"model": m, "prompt": prompt, "stream": false});
+        let resp = self.client.post(&format!("{}/api/generate", self.base_url))
+            .json(&body).send().await?
+            .json::<serde_json::Value>().await?;
+        Ok(resp["response"].as_str().map(String::from)
+            .unwrap_or_else(|| "[Ollama] No response or not running".to_string()))
+    }
+}
+
+// ═══════════════════════════════════════════
+// Mistral Client
+// ═══════════════════════════════════════════
+pub struct MistralClient {
+    api_key: String,
+    client: Client,
+}
+
+impl MistralClient {
+    pub fn new(api_key: &str) -> Self {
+        MistralClient { api_key: api_key.to_string(), client: Client::new() }
+    }
+
+    pub async fn chat(&self, prompt: &str) -> Result<String> {
+        if self.api_key.is_empty() { return Ok("[Mistral] API key not configured".to_string()); }
+        let body = serde_json::json!({
+            "model": "mistral-small-latest",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1024
+        });
+        let resp = self.client.post("https://api.mistral.ai/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&body).send().await?
+            .json::<serde_json::Value>().await?;
+        if let Some(err) = resp.get("error") { return Ok(format!("Mistral Error: {}", err)); }
+        Ok(resp["choices"][0]["message"]["content"].as_str().map(String::from)
+            .unwrap_or_else(|| "No response".to_string()))
+    }
+}
+
+// ═══════════════════════════════════════════
+// DeepSeek Client
+// ═══════════════════════════════════════════
+pub struct DeepSeekClient {
+    api_key: String,
+    client: Client,
+}
+
+impl DeepSeekClient {
+    pub fn new(api_key: &str) -> Self {
+        DeepSeekClient { api_key: api_key.to_string(), client: Client::new() }
+    }
+
+    pub async fn chat(&self, prompt: &str) -> Result<String> {
+        if self.api_key.is_empty() { return Ok("[DeepSeek] API key not configured".to_string()); }
+        let body = serde_json::json!({
+            "model": "deepseek-chat",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1024
+        });
+        let resp = self.client.post("https://api.deepseek.com/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&body).send().await?
+            .json::<serde_json::Value>().await?;
+        if let Some(err) = resp.get("error") { return Ok(format!("DeepSeek Error: {}", err)); }
+        Ok(resp["choices"][0]["message"]["content"].as_str().map(String::from)
+            .unwrap_or_else(|| "No response".to_string()))
+    }
+}
