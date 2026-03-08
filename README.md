@@ -125,6 +125,27 @@ docker compose up -d          # AEGIS + Prometheus + Grafana
 open http://localhost:3000     # Grafana dashboard
 open http://localhost:9090     # Prometheus
 ```
+## AI Security Framework
+
+AEGIS OS maps directly to recognized AI security standards:
+```
+AEGIS Module                 →  AI Security Domain
+════════════════════════════════════════════════
+12-Layer Architecture        →  Secure AI Systems Design
+Credential Isolation + RBAC  →  Zero Trust for AI Agents
+Red Team + MCP-Kali          →  AI Red Teaming
+Audit Logger + SIEM          →  AI Governance & Compliance
+MCP Security + Allowlist     →  LLM Tool Security
+Input Sanitization           →  Prompt Injection Defense
+RAG Security Guard           →  RAG Poisoning Protection
+Privacy Filter               →  AI Output Privacy
+Extraction Detector          →  Model Extraction Defense
+Skill Vetting                →  AI Supply Chain Security
+```
+
+**Standards:** NIST AI RMF ✅ | OWASP LLM Top 10 (10/10) ✅ | MAESTRO ✅ | Stanford AIUC-1 ✅
+
+See [AI-SECURITY-FRAMEWORK.md](AI-SECURITY-FRAMEWORK.md) for full mapping.
 
 ## Security Test Results
 ```
