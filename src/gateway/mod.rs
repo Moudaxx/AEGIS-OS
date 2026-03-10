@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Mouda. All Rights Reserved. AGPL-3.0
 use std::collections::HashMap;
 use std::time::Instant;
 use uuid::Uuid;

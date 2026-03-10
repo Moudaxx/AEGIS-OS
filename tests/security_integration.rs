@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Mouda. All Rights Reserved. AGPL-3.0
 // AEGIS OS v4.0 — Day 14: Full Security Integration Tests
 // Run: cargo test --test security_integration -- --nocapture
 

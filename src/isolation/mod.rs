@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Mouda. All Rights Reserved. AGPL-3.0
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use wasmtime::{Engine, Store, Module, Linker};

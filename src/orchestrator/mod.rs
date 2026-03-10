@@ -1,3 +1,4 @@
+// Copyright (c) 2025 Mouda. All Rights Reserved. AGPL-3.0
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
