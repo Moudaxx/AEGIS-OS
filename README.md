@@ -1,3 +1,4 @@
+# AEGIS OS™ — Secure AI Agent Platform
 # ⛊ AEGIS OS v4.0
 
 ### Secure Agent & Robot Execution Platform
