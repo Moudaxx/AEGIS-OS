@@ -25,3 +25,5 @@ config/local.*
 certs/
 aegis-report.json
 aegis-dashboard.html
+aegis-report.json
+aegis-dashboard.html
