@@ -1,241 +1,190 @@
-# AEGIS OS™ — Secure AI Agent Platform
-# ⛊ AEGIS OS v4.0
+# ⛊ AEGIS OS v4.1
 
-### Secure Agent & Robot Execution Platform
+**Autonomous AI Agent Security Platform — Built in Rust**
 
-[![CI](https://github.com/Moudaxx/aegis-os/actions/workflows/ci.yml/badge.svg)](https://github.com/Moudaxx/aegis-os/actions)
-[![Rust](https://img.shields.io/badge/Rust-1.85-orange)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Security](https://img.shields.io/badge/Red%20Team-16%2F16%20Blocked-brightgreen)]()
-[![AI](https://img.shields.io/badge/AI-5%20Backends-blue)]()
+[![Release](https://img.shields.io/github/v/release/Moudaxx/AEGIS-OS)](https://github.com/Moudaxx/AEGIS-OS/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-135%2F135-brightgreen)]()
+[![OWASP](https://img.shields.io/badge/OWASP_LLM_Top_10-10%2F10-brightgreen)](AI-SECURITY-FRAMEWORK.md)
 
----
+> 88% of organizations reported AI agent security incidents. AEGIS OS is the first autonomous security platform that discovers, tests, and protects AI agents — automatically.
 
-AEGIS OS is a security-first execution platform for AI agents. It enforces **12 security layers** around every agent — from WASM sandboxing to runtime risk scoring.
-```
-cargo run -- serve    # Start HTTP server on :8401
-cargo run -- run --name my-agent --provider groq
-cargo run -- red-team # 16/16 attacks blocked
-```
+## What is AEGIS OS?
 
----
-
-## Architecture — 12 Security Layers
-```
-┌──────────────────────────────────────────────┐
-│  1. CLI / API Gateway / MCP Server / A2A     │
-│  2. AI Inference (NIM+Claude+Gemini+Groq+OAI)│
-│  3. Policy Engine + Guardrails (5 rules)     │
-│  4. Input Sanitization (21 patterns)         │
-│  5. Skill Vetting Pipeline                   │
-│  6. API Gateway + Rate Limiting (11 routes)  │
-│  7. Tool Router (15 tools + Kali)            │
-│  8. MCP Client/Server + A2A Gateway          │
-│  9. WASM Sandbox + Filesystem Jail           │
-│ 10. State Integrity Monitor + Drift Detection│
-│ 11. Credential Vault + Capability Tokens     │
-│ 12. Runtime Risk Scoring (4D) + Audit + SIEM │
-└──────────────────────────────────────────────┘
+AEGIS OS is an open-source autonomous security platform for AI agents. It wraps every agent in **12 security layers**, discovers new agents on your network, tests them continuously, learns from attacks, and generates reports — all without human intervention.
+```bash
+cargo run -- autonomous     # Autonomous 24/7 security daemon
+cargo run -- serve          # HTTP server on :8401
+cargo run -- serve-tls      # HTTPS on :8443
+cargo run -- red-team       # 16 attack vectors tested
 ```
 
-## AI Backends
+## Autonomous Mode — Works Alone
+```
+$ cargo run -- autonomous --cycles 3
+
+[DAEMON] ═══ Cycle 1 ═══
+[DAEMON] Phase 1: Discovery — Found 3 agents (OpenClaw, Goose, MCP)
+[DAEMON] Phase 2: Testing — 15 tests × 3 agents = 45 tests
+[DAEMON] Phase 3: Analysis — 1 threat: OpenClaw (9 CVEs)
+[DAEMON] Phase 4: Blocking — OpenClaw auto-blocked
+[DAEMON] Phase 5: Learning — 1 new rule generated
+[DAEMON] Phase 6: Report — Daily report generated
+[DAEMON] ═══ Cycle 1 Complete ═══
+```
+
+### 6-Phase Autonomous Cycle
+
+| Phase | Engine | What it does |
+|-------|--------|-------------|
+| 1. Discover | Discovery Engine | Scans ports, MCP servers, Docker containers |
+| 2. Test | Continuous Testing | 15 security tests per agent |
+| 3. Analyze | Threat Analysis | Risk scoring + known CVE matching |
+| 4. Block | Auto-Block | Blocks agents above risk threshold |
+| 5. Learn | Adaptive Learning | Creates new rules from attacks |
+| 6. Report | Autonomous Reporter | Daily/weekly/incident reports |
+
+## 32 Security Modules
+
+| Category | Modules |
+|----------|---------|
+| **Core** | CLI, Server (Axum), Orchestrator, Gateway |
+| **AI** | 9 backends: NIM, Groq, OpenAI, Gemini, Claude, Cosmos, Ollama, Mistral, DeepSeek |
+| **Security** | Input Sanitization, Skill Vetting, Guardrails, Isolation, Credentials, Risk Scoring |
+| **AI Security** | RAG Security Guard, Privacy Filter, Extraction Detector, Hallucination Detector, AI Watermark |
+| **Protocols** | MCP Client/Server (20 tools), A2A Gateway, MCP-Kali (12 pentest tools) |
+| **Autonomous** | Discovery Engine, Continuous Testing, Adaptive Learning, Autonomous Reporter, Autonomous Daemon |
+| **Infrastructure** | Database, ROS2, Telemetry, Audit Logger |
+
+## 12 Security Layers
+```
+Layer 1:  API Gateway + TLS/HTTPS + RBAC (4 roles)
+Layer 2:  AI Inference (9 backends + fallback chain)
+Layer 3:  Policy Engine + Guardrails
+Layer 4:  Input Sanitization (21 injection patterns)
+Layer 5:  Skill Vetting Pipeline (static + deps + sandbox)
+Layer 6:  Rate Limiting + DDoS Protection
+Layer 7:  Tool Router + MCP Bridge (20 tools)
+Layer 8:  MCP Server + A2A Gateway
+Layer 9:  WASM Sandbox + Filesystem Jail
+Layer 10: State Integrity Monitor (SHA256 + drift)
+Layer 11: Credential Vault + Capability Tokens + TTL
+Layer 12: Risk Scoring (4D) + Audit + SIEM Export
+```
+
+## 9 AI Backends
 
 | Provider | Model | Status |
 |----------|-------|--------|
-| **NVIDIA NIM** | meta/llama-3.1-8b-instruct | ✅ |
-| **Groq** | llama-3.3-70b-versatile | ✅ |
-| **OpenAI** | gpt-4o-mini | ✅ |
-| **Google Gemini** | gemini-2.5-flash-lite | ✅ |
-| **Anthropic Claude** | claude-haiku-4-5 | ✅ |
-
-## HTTP API (Real Server)
-
-Start the server:
-```bash
-cargo run -- serve              # Starts on :8401
-cargo run -- serve --port 8080  # Custom port
-```
-
-### Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | /health | No | Health check |
-| GET | /version | No | Version info |
-| GET | /metrics | No | Prometheus metrics |
-| POST | /mcp/tools/list | No | List MCP tools |
-| POST | /mcp/tools/call | Yes | Execute MCP tool |
-| POST | /api/v1/agents/run | Yes | Start an agent |
-| POST | /api/v1/agents/stop | Yes | Stop agents |
-| GET | /api/v1/agents | No | List agents |
-| POST | /api/v1/inference | Yes | AI inference |
-| POST | /api/v1/redteam | Yes | Red Team scan |
-| GET | /api/v1/audit | No | Audit logs |
-
-### Examples
-```bash
-# Health
-curl http://localhost:8401/health
-
-# Start agent
-curl -X POST http://localhost:8401/api/v1/agents/run \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my-agent","provider":"groq","auth_token":"aegis-secret-token"}'
-
-# Red Team scan
-curl -X POST http://localhost:8401/api/v1/redteam \
-  -H "Content-Type: application/json" \
-  -d '{"auth_token":"aegis-secret-token"}'
-
-# Prometheus metrics
-curl http://localhost:8401/metrics
-```
-
-## Quick Start
-
-### Prerequisites
-- Rust 1.85+
-- At least one API key (Groq is free and fast)
-
-### Setup
-```bash
-git clone https://github.com/Moudaxx/aegis-os.git
-cd aegis-os
-cp .env.example .env    # Add your API keys
-cargo build
-```
-
-### Run
-```bash
-# Full 12-layer agent execution
-cargo run -- run --name my-agent --provider groq
-
-# HTTP server mode
-cargo run -- serve
-
-# Red Team security scan
-cargo run -- red-team
-
-# Version info
-cargo run -- version
-```
-
-### Docker
-```bash
-docker compose up -d          # AEGIS + Prometheus + Grafana
-open http://localhost:3000     # Grafana dashboard
-open http://localhost:9090     # Prometheus
-```
-## AI Security Framework
-
-AEGIS OS maps directly to recognized AI security standards:
-```
-AEGIS Module                 →  AI Security Domain
-════════════════════════════════════════════════
-12-Layer Architecture        →  Secure AI Systems Design
-Credential Isolation + RBAC  →  Zero Trust for AI Agents
-Red Team + MCP-Kali          →  AI Red Teaming
-Audit Logger + SIEM          →  AI Governance & Compliance
-MCP Security + Allowlist     →  LLM Tool Security
-Input Sanitization           →  Prompt Injection Defense
-RAG Security Guard           →  RAG Poisoning Protection
-Privacy Filter               →  AI Output Privacy
-Extraction Detector          →  Model Extraction Defense
-Skill Vetting                →  AI Supply Chain Security
-```
-
-**Standards:** NIST AI RMF ✅ | OWASP LLM Top 10 (10/10) ✅ | MAESTRO ✅ | Stanford AIUC-1 ✅
-
-See [AI-SECURITY-FRAMEWORK.md](AI-SECURITY-FRAMEWORK.md) for full mapping.
+| NVIDIA NIM | Llama 3.1 8B | ✅ Verified |
+| Groq | Llama 3.3 70B | ✅ Verified |
+| OpenAI | GPT-4o-mini | ✅ Verified |
+| Google Gemini | 2.5 Flash Lite | ✅ Verified |
+| Anthropic Claude | Haiku 4.5 | ✅ Ready |
+| NVIDIA Cosmos | Reason 7B | ✅ Built |
+| Ollama | Local models | ✅ Built |
+| Mistral | Small Latest | ✅ Built |
+| DeepSeek | Chat | ✅ Built |
 
 ## Security Test Results
 ```
-Integration Tests:  75/75  (100%)
-Red Team Tests:     16/16  (100%)
-
-✅ Prompt Injection      — InputSanitizer (21 patterns)
-✅ Path Traversal        — FilesystemJail (13 blocked patterns)
-✅ Data Exfiltration     — NetworkEgress (exact match + blocklist)
-✅ Credential Theft      — CredentialVault (revoke + TTL)
-✅ Privilege Escalation  — CapabilityTokens (wildcards)
-✅ Skill Tampering       — SkillVetter (static + deps + sandbox)
-✅ Sandbox Escape        — WasmSandbox (wasmtime)
-✅ State Tampering       — StateMonitor (SHA256 + drift)
-✅ Network Escape        — NetworkEgress (port allowlist)
-✅ Denial of Service     — ApiGateway (rate limiting)
+Integration Tests:    75/75   (100%) ✅
+Advanced Security:    60/60   (100%) ✅
+Red Team Tests:       16/16   (100%) ✅
+OWASP LLM Top 10:    10/10   (100%) ✅
+Total:               151 tests — all passing
 ```
 
-## Project Structure
-```
-aegis-os/
-├── src/
-│   ├── main.rs              # Entry point — 12 layers
-│   ├── server/mod.rs        # HTTP server (Axum) — 11 endpoints
-│   ├── cli/mod.rs           # CLI — 9 commands
-│   ├── orchestrator/mod.rs  # Agent lifecycle
-│   ├── inference/mod.rs     # 5 AI backends
-│   ├── isolation/mod.rs     # WASM + FS jail + network egress
-│   ├── credentials/mod.rs   # Capability tokens + vault
-│   ├── sanitization/mod.rs  # Input sanitization
-│   ├── skill_vetting/mod.rs # Skill vetting pipeline
-│   ├── tool_router/mod.rs   # Tool router (15 tools)
-│   ├── guardrails/mod.rs    # Policy engine (5 rules)
-│   ├── mcp/mod.rs           # MCP client + server
-│   ├── a2a/mod.rs           # A2A gateway
-│   ├── state/mod.rs         # State integrity monitor
-│   ├── risk/mod.rs          # Runtime risk scoring
-│   ├── audit/mod.rs         # Audit logger + SIEM
-│   ├── gateway/mod.rs       # API gateway
-│   ├── redteam/mod.rs       # Red team engine
-│   ├── database/mod.rs      # Oracle DB connector
-│   ├── ros2/mod.rs          # ROS2 gatekeeper
-│   └── telemetry/mod.rs     # Prometheus metrics
-├── tests/
-│   └── security_integration.rs  # 75 tests
-├── Dockerfile
-├── docker-compose.yml
-├── .github/workflows/ci.yml
-└── aegis.toml               # Configuration
+### What's Tested
+
+| Test Suite | Tests | Coverage |
+|------------|-------|----------|
+| Capability Tokens | 12 | Wildcards, TTL, expiry |
+| Credential Vault | 8 | Store, revoke, TTL |
+| Skill Vetting | 6 | Static analysis, deps, sandbox |
+| Input Sanitization | 11 | 21 injection patterns |
+| Filesystem Jail | 12 | Traversal, blocked paths |
+| Network Egress | 12 | Allowlist, blocklist, ports |
+| Risk Scoring | 3 | Normal → suspicious → compromised |
+| AI Backend | 4 | Sanitize → AI → verify |
+| Attack Simulation | 7 | Multi-stage attack chain |
+| RAG Security | 7 | Poisoning, injection, trust |
+| Privacy Filter | 16 | API keys, tokens, PII |
+| Extraction Detection | 9 | Probing, system prompt theft |
+| Hallucination | 8 | Overconfidence, impossible claims |
+| Watermark | 8 | Stamp, verify, tamper detection |
+| Kali Authorization | 6 | Target allowlist |
+| Combined Attack | 6 | RAG + extraction + leak + tamper |
+
+## 12 HTTP Endpoints
+```bash
+# Start server
+cargo run -- serve          # HTTP :8401
+cargo run -- serve-tls      # HTTPS :8443
 ```
 
-## Environment Variables
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/health` | GET | No | Health check |
+| `/api/v1/agents/run` | POST | Admin, Operator | Run agent |
+| `/api/v1/agents/stop` | POST | Admin, Operator | Stop agent |
+| `/api/v1/agents/list` | GET | All | List agents |
+| `/api/v1/agents/status` | GET | All | Agent status |
+| `/api/v1/inference` | POST | Admin, Operator, Agent | AI inference |
+| `/api/v1/redteam` | POST | Admin | Red team test |
+| `/api/v1/tools` | POST | Admin, Operator, Agent | Execute tool |
+| `/api/v1/audit` | GET | Admin, Operator, Viewer | Audit logs |
+| `/api/v1/metrics` | GET | All | Prometheus metrics |
+| `/api/v1/dashboard` | GET | All | Dashboard JSON |
+| `/mcp/tools/*` | POST | MCP Auth | MCP tool calls |
 
-| Variable | Source | Required |
-|----------|--------|----------|
-| `NVIDIA_NIM_API_KEY` | build.nvidia.com | Optional |
-| `GROQ_API_KEY` | console.groq.com | Recommended (free) |
-| `OPENAI_API_KEY` | platform.openai.com | Optional |
-| `GOOGLE_AI_API_KEY` | aistudio.google.com | Optional |
-| `ANTHROPIC_API_KEY` | console.anthropic.com | Optional |
+## Quick Start
+```bash
+git clone https://github.com/Moudaxx/AEGIS-OS.git
+cd AEGIS-OS
+cp .env.example .env  # Add your API keys
+cargo build
+cargo run -- autonomous --cycles 3  # Watch it work alone!
+```
 
-## Roadmap
+## Docker
+```bash
+docker-compose up -d  # AEGIS + Prometheus + Grafana
+```
 
-| Phase | Status |
-|-------|--------|
-| MVP — 12 layers + 5 AI backends | ✅ Complete |
-| HTTP Server — Real API | ✅ Complete |
-| Docker + Prometheus + Grafana | ✅ Complete |
-| CI/CD — GitHub Actions | ✅ Complete |
-| Multi-agent runtime | Planned |
-| TLS/mTLS | Planned |
-| RBAC | Planned |
-| Kubernetes Helm chart | Planned |
-| SaaS — AEGIS Cloud | Planned |
+## RBAC — 4 Roles
 
-## Contributing
+| Role | Run | Stop | Inference | Red Team | Audit | Config |
+|------|-----|------|-----------|----------|-------|--------|
+| Admin | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Operator | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Viewer | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Agent | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+## AI Security Framework
 
-## Security
+| Standard | Coverage |
+|----------|----------|
+| OWASP LLM Top 10 | **10/10** |
+| NIST AI RMF | Aligned |
+| OWASP MAESTRO | Aligned |
 
-See [SECURITY.md](SECURITY.md)
+See [AI-SECURITY-FRAMEWORK.md](AI-SECURITY-FRAMEWORK.md) for full mapping.
+
+## Related Projects
+
+- **[AEGIS Pay](https://github.com/Moudaxx/AEGIS-Pay)** — Secure Payment Layer for AI Agents (x402 + EIP-3009 + USDC)
+
+## Tech Stack
+
+Rust, Axum, Tokio, Wasmtime, Docker, Prometheus, Grafana, GitHub Actions
 
 ## License
 
 MIT — See [LICENSE](LICENSE)
 
----
+## Links
 
-<p align="center">
-  <b>⛊ AEGIS OS</b> — Because AI agents deserve security too.
-</p>
+- 🌐 Website: [moudaxx.github.io/AEGIS-OS](https://moudaxx.github.io/AEGIS-OS/)
+- 📄 Security Framework: [AI-SECURITY-FRAMEWORK.md](AI-SECURITY-FRAMEWORK.md)
+- 💰 AEGIS Pay: [github.com/Moudaxx/AEGIS-Pay](https://github.com/Moudaxx/AEGIS-Pay)
