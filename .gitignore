@@ -23,3 +23,5 @@ config/local.*
 .vscode/
 .idea/aegis-audit.log
 certs/
+aegis-report.json
+aegis-dashboard.html

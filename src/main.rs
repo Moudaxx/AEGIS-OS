@@ -30,6 +30,7 @@ mod continuous_test;
 mod learning;
 mod reporter;
 mod autonomous;
+mod dashboard;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
@@ -425,7 +426,17 @@ async fn main() -> Result<()> {
                     std::thread::sleep(std::time::Duration::from_secs(scan_interval.unwrap_or(5)));
                 }
             }
-            daemon.status();
+        daemon.status();
+
+            // Generate reports
+            let mut dash = dashboard::AegisDashboard::new();
+            for i in 1..=max_cycles {
+                dash.add_report(i, 3, 3, 1, 1, 1);
+            }
+            dash.save_json("aegis-report.json");
+            dash.save_html("aegis-dashboard.html");
+            println!("[DAEMON] Open aegis-dashboard.html in browser to view!");
+
             daemon.stop();
         }
         Commands::Audit => {
