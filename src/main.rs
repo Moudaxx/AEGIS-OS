@@ -27,6 +27,8 @@ mod hallucination;
 mod watermark;
 mod discovery;
 mod continuous_test;
+mod learning;
+mod reporter;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
