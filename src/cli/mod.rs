@@ -61,6 +61,15 @@ pub enum Commands {
         #[arg(short, long)]
         port: Option<u16>,
     },
+    /// Start autonomous security daemon
+    Autonomous {
+        /// Scan interval in seconds (default: 300)
+        #[arg(short, long)]
+        scan_interval: Option<u64>,
+        /// Number of cycles (0 = infinite)
+        #[arg(short, long)]
+        cycles: Option<u64>,
+    },
     /// Show audit logs
     Audit,
     /// Show version info

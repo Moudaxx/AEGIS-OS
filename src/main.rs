@@ -29,6 +29,7 @@ mod discovery;
 mod continuous_test;
 mod learning;
 mod reporter;
+mod autonomous;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
@@ -412,6 +413,20 @@ async fn main() -> Result<()> {
         }
         Commands::ServeTls { port } => {
             server::start_tls_server(port.unwrap_or(8443)).await;
+        }
+        Commands::Autonomous { scan_interval, cycles } => {
+            let mut daemon = autonomous::AutonomousDaemon::new();
+            daemon.start();
+            let max_cycles = cycles.unwrap_or(3);
+            for i in 0..max_cycles {
+                daemon.run_cycle();
+                if i < max_cycles - 1 {
+                    println!("[DAEMON] Next cycle in {}s...", scan_interval.unwrap_or(5));
+                    std::thread::sleep(std::time::Duration::from_secs(scan_interval.unwrap_or(5)));
+                }
+            }
+            daemon.status();
+            daemon.stop();
         }
         Commands::Audit => {
             println!("[AEGIS] Audit log: no entries yet (start an agent first)");
