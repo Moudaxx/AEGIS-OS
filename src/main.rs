@@ -25,6 +25,8 @@ mod privacy;
 mod extraction_detect;
 mod hallucination;
 mod watermark;
+mod discovery;
+mod continuous_test;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
