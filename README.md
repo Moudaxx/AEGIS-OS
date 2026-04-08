@@ -83,6 +83,16 @@ cargo run -- autonomous --cycles 3
 docker-compose up -d
 ```
 
+## Continuous Development
+
+The repository includes built-in automation for continuous improvement:
+
+- `AEGIS CI` runs on every push and pull request to check formatting, linting, tests, release builds, and the Docker image.
+- `AEGIS Maintenance` runs every 6 hours, uploads a repository health report, and opens a GitHub issue if scheduled checks fail.
+- `Dependabot` keeps Cargo, GitHub Actions, and Docker dependencies moving forward weekly.
+
+See [docs/continuous-development.md](docs/continuous-development.md) for the full operating model and the remaining setup needed for fully autonomous code-writing agents.
+
 ## License
 
 AEGIS OS uses the dual-license terms described in [LICENSE](LICENSE):
