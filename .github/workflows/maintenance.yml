@@ -1,0 +1,123 @@
+name: AEGIS Maintenance
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: aegis-maintenance
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  maintenance:
+    name: Scheduled Repository Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run format check
+        id: fmt
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+
+      - name: Run lints
+        id: clippy
+        continue-on-error: true
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: cargo test --workspace --all-features
+
+      - name: Build release binary
+        id: build
+        continue-on-error: true
+        run: cargo build --release
+
+      - name: Write maintenance summary
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          {
+            echo "# AEGIS maintenance report"
+            echo
+            echo "- Repository: $GITHUB_REPOSITORY"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Format: ${{ steps.fmt.outcome }}"
+            echo "- Clippy: ${{ steps.clippy.outcome }}"
+            echo "- Tests: ${{ steps.test.outcome }}"
+            echo "- Build: ${{ steps.build.outcome }}"
+          } > artifacts/maintenance-report.md
+
+      - name: Upload maintenance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-report
+          path: artifacts/maintenance-report.md
+
+      - name: Open issue when maintenance fails
+        if: steps.fmt.outcome != 'success' || steps.clippy.outcome != 'success' || steps.test.outcome != 'success' || steps.build.outcome != 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Scheduled maintenance failure";
+            const body = [
+              "One or more scheduled maintenance checks failed.",
+              "",
+              `- Format: ${{ steps.fmt.outcome }}`,
+              `- Clippy: ${{ steps.clippy.outcome }}`,
+              `- Tests: ${{ steps.test.outcome }}`,
+              `- Build: ${{ steps.build.outcome }}`,
+              "",
+              `Run: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            ].join("\n");
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Fail workflow if any check failed
+        if: steps.fmt.outcome != 'success' || steps.clippy.outcome != 'success' || steps.test.outcome != 'success' || steps.build.outcome != 'success'
+        run: |
+          echo "Scheduled maintenance detected at least one failing check."
+          exit 1

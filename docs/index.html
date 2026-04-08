@@ -3,116 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AEGIS OS — Secure AI Agent Platform</title>
+    <title>AEGIS OS | Autonomous AI Agent Security Platform</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; background: #0a0a1a; }
-        .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a2a2a 100%); }
-        .logo { font-size: 5rem; margin-bottom: 1rem; }
-        h1 { font-size: 3.5rem; color: #00d4aa; margin-bottom: 0.5rem; }
-        .subtitle { font-size: 1.3rem; color: #8899aa; margin-bottom: 2rem; }
-        .badges { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
-        .badge { padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
-        .badge-green { background: #00d4aa22; color: #00d4aa; border: 1px solid #00d4aa44; }
-        .badge-blue { background: #3388ff22; color: #3388ff; border: 1px solid #3388ff44; }
-        .badge-purple { background: #8855ff22; color: #8855ff; border: 1px solid #8855ff44; }
-        .badge-orange { background: #ff885522; color: #ff8855; border: 1px solid #ff885544; }
-        .cta { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
-        .btn { padding: 0.8rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1rem; transition: transform 0.2s; }
-        .btn:hover { transform: translateY(-2px); }
-        .btn-primary { background: #00d4aa; color: #0a0a1a; }
-        .btn-secondary { background: transparent; color: #00d4aa; border: 2px solid #00d4aa; }
-        .layers { max-width: 700px; width: 100%; margin: 2rem auto; }
-        .layer { display: flex; align-items: center; padding: 0.6rem 1.2rem; margin: 0.3rem 0; border-radius: 6px; background: #ffffff08; border-left: 3px solid #00d4aa; }
-        .layer-num { color: #00d4aa; font-weight: 700; margin-right: 1rem; min-width: 2rem; }
-        .layer-name { color: #ccd; font-size: 0.95rem; }
-        .section { padding: 4rem 2rem; max-width: 900px; margin: 0 auto; }
-        .section h2 { font-size: 2rem; color: #00d4aa; margin-bottom: 1.5rem; text-align: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
-        .card { background: #ffffff08; border: 1px solid #ffffff15; border-radius: 10px; padding: 1.5rem; }
-        .card h3 { color: #00d4aa; margin-bottom: 0.5rem; }
-        .card p { color: #8899aa; font-size: 0.9rem; line-height: 1.6; }
-        .stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; margin: 2rem 0; }
-        .stat { text-align: center; }
-        .stat-num { font-size: 2.5rem; font-weight: 800; color: #00d4aa; }
-        .stat-label { color: #8899aa; font-size: 0.9rem; }
-        .code-block { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; overflow-x: auto; }
-        .code-block code { color: #c9d1d9; font-family: 'Consolas', monospace; font-size: 0.9rem; white-space: pre; }
-        .footer { text-align: center; padding: 2rem; color: #556; border-top: 1px solid #ffffff10; }
-        .providers { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin: 1.5rem 0; }
-        .provider { padding: 0.5rem 1.2rem; border-radius: 6px; background: #ffffff08; border: 1px solid #ffffff15; color: #aab; font-size: 0.9rem; }
+        :root {
+            --bg: #081018;
+            --bg-accent: #10243a;
+            --panel: rgba(255, 255, 255, 0.06);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --text: #ecf5ff;
+            --muted: #9eb2c7;
+            --brand: #53e0b2;
+            --brand-deep: #1aa381;
+            --warm: #ffd166;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top, rgba(83, 224, 178, 0.18), transparent 35%),
+                linear-gradient(160deg, var(--bg) 0%, var(--bg-accent) 55%, #050a10 100%);
+        }
+
+        a { color: inherit; }
+
+        .hero {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 96px 24px 48px;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(83, 224, 178, 0.12);
+            color: var(--brand);
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 18px 0 16px;
+            font-size: clamp(42px, 8vw, 76px);
+            line-height: 0.98;
+            max-width: 760px;
+        }
+
+        .lead {
+            max-width: 720px;
+            color: var(--muted);
+            font-size: 19px;
+            line-height: 1.7;
+        }
+
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .button {
+            text-decoration: none;
+            padding: 14px 22px;
+            border-radius: 12px;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .button.primary {
+            background: linear-gradient(135deg, var(--brand) 0%, #7af2bf 100%);
+            color: #04231d;
+        }
+
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .stats,
+        .grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .stat,
+        .card,
+        .shell {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            backdrop-filter: blur(8px);
+        }
+
+        .stat {
+            padding: 22px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 34px;
+            color: var(--brand);
+            margin-bottom: 6px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            padding-top: 8px;
+        }
+
+        .card {
+            padding: 20px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 21px;
+        }
+
+        .card p,
+        .card li {
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .card ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .shell-wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .shell {
+            overflow: hidden;
+        }
+
+        .shell-bar {
+            display: flex;
+            gap: 8px;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: #ffffff33;
+        }
+
+        pre {
+            margin: 0;
+            padding: 20px;
+            overflow-x: auto;
+            color: #d9f6ff;
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        footer {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px;
+            color: var(--muted);
+        }
+
+        .license {
+            color: var(--warm);
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
-    <div class="hero">
-        <div class="logo">⛊</div>
-        <h1>AEGIS OS</h1>
-        <p class="subtitle">Secure AI Agent Execution Platform</p>
-        <div class="badges">
-            <span class="badge badge-green">12 Security Layers</span>
-            <span class="badge badge-blue">5 AI Backends</span>
-            <span class="badge badge-purple">RBAC + TLS</span>
-            <span class="badge badge-orange">Built in Rust</span>
+    <section class="hero">
+        <span class="eyebrow">AEGIS OS v4.1</span>
+        <h1>Security controls for AI agents that have to run in the real world.</h1>
+        <p class="lead">
+            AEGIS OS is a Rust-based platform for hardening agent execution with layered controls:
+            policy enforcement, input sanitization, sandboxing, runtime risk scoring, audit trails,
+            red-team simulation, and autonomous reporting.
+        </p>
+        <div class="cta-row">
+            <a class="button primary" href="https://github.com/Moudaxx/AEGIS-OS">View on GitHub</a>
+            <a class="button secondary" href="https://github.com/Moudaxx/AEGIS-OS/releases">Releases</a>
         </div>
-        <div class="cta">
-            <a href="https://github.com/Moudaxx/AEGIS-OS" class="btn btn-primary">GitHub Repository</a>
-            <a href="https://github.com/Moudaxx/AEGIS-OS/releases" class="btn btn-secondary">Download v4.0.0</a>
-        </div>
-        <div class="stats">
-            <div class="stat"><div class="stat-num">12</div><div class="stat-label">Security Layers</div></div>
-            <div class="stat"><div class="stat-num">75/75</div><div class="stat-label">Tests Passing</div></div>
-            <div class="stat"><div class="stat-num">16/16</div><div class="stat-label">Attacks Blocked</div></div>
-            <div class="stat"><div class="stat-num">21</div><div class="stat-label">Rust Modules</div></div>
-        </div>
-        <div class="layers">
-            <div class="layer"><span class="layer-num">1</span><span class="layer-name">CLI / API Gateway / MCP Server / A2A</span></div>
-            <div class="layer"><span class="layer-num">2</span><span class="layer-name">AI Inference (NVIDIA + Claude + Gemini + Groq + OpenAI)</span></div>
-            <div class="layer"><span class="layer-num">3</span><span class="layer-name">Policy Engine + Guardrails (5 rules)</span></div>
-            <div class="layer"><span class="layer-num">4</span><span class="layer-name">Input Sanitization (21 patterns)</span></div>
-            <div class="layer"><span class="layer-num">5</span><span class="layer-name">Skill Vetting Pipeline</span></div>
-            <div class="layer"><span class="layer-num">6</span><span class="layer-name">API Gateway + Rate Limiting + RBAC</span></div>
-            <div class="layer"><span class="layer-num">7</span><span class="layer-name">Tool Router (15 tools + Kali)</span></div>
-            <div class="layer"><span class="layer-num">8</span><span class="layer-name">MCP Client/Server + A2A Gateway</span></div>
-            <div class="layer"><span class="layer-num">9</span><span class="layer-name">WASM Sandbox + Filesystem Jail</span></div>
-            <div class="layer"><span class="layer-num">10</span><span class="layer-name">State Integrity Monitor + Drift Detection</span></div>
-            <div class="layer"><span class="layer-num">11</span><span class="layer-name">Credential Vault + Capability Tokens</span></div>
-            <div class="layer"><span class="layer-num">12</span><span class="layer-name">Runtime Risk Scoring (4D) + Audit + SIEM</span></div>
-        </div>
-    </div>
-    <div class="section">
-        <h2>AI Backends</h2>
-        <div class="providers">
-            <span class="provider">NVIDIA NIM</span>
-            <span class="provider">Groq (LLaMA 3.3)</span>
-            <span class="provider">OpenAI (GPT-4o)</span>
-            <span class="provider">Google Gemini</span>
-            <span class="provider">Anthropic Claude</span>
-        </div>
-    </div>
-    <div class="section">
-        <h2>Quick Start</h2>
-        <div class="code-block"><code>git clone https://github.com/Moudaxx/AEGIS-OS.git
+    </section>
+
+    <section class="stats">
+        <div class="stat"><strong>12</strong><span>Security layers</span></div>
+        <div class="stat"><strong>139</strong><span>Documented test checks</span></div>
+        <div class="stat"><strong>9</strong><span>AI providers and backends</span></div>
+        <div class="stat"><strong>12</strong><span>Primary HTTP endpoints</span></div>
+    </section>
+
+    <section class="grid">
+        <article class="card">
+            <h2>What It Covers</h2>
+            <ul>
+                <li>API gateway, RBAC, TLS, and tool routing</li>
+                <li>WASM sandboxing and filesystem/network controls</li>
+                <li>Credential vaulting, capability tokens, and drift detection</li>
+                <li>RAG poisoning, privacy leaks, extraction attempts, and hallucination checks</li>
+            </ul>
+        </article>
+        <article class="card">
+            <h2>Autonomous Loop</h2>
+            <ul>
+                <li>Discover agents</li>
+                <li>Run continuous security tests</li>
+                <li>Analyze and score threats</li>
+                <li>Block risky agents and generate reports</li>
+            </ul>
+        </article>
+        <article class="card">
+            <h2>Implemented In</h2>
+            <p>
+                Rust, Tokio, Axum, Wasmtime, Docker, Prometheus, and Grafana.
+                The project ships with CLI workflows, server endpoints, dashboards,
+                and red-team simulations.
+            </p>
+        </article>
+    </section>
+
+    <section class="shell-wrap">
+        <div class="shell">
+            <div class="shell-bar">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+            <pre><code>git clone https://github.com/Moudaxx/AEGIS-OS.git
 cd AEGIS-OS
-cp .env.example .env    # Add your API keys
+cp .env.example .env
 cargo build
-cargo run -- serve       # Start HTTP server on :8401
-cargo run -- run --name my-agent --provider groq
-cargo run -- red-team    # 16/16 attacks blocked</code></div>
-    </div>
-    <div class="section">
-        <h2>Features</h2>
-        <div class="grid">
-            <div class="card"><h3>Real HTTP Server</h3><p>12 endpoints powered by Axum — agents, inference, tools, audit, red team, metrics, dashboard.</p></div>
-            <div class="card"><h3>RBAC</h3><p>4 roles: Admin, Operator, Viewer, Agent. Each with specific permissions enforced on every request.</p></div>
-            <div class="card"><h3>TLS/HTTPS</h3><p>Encrypted communications with self-signed or CA certs. serve-tls command ready.</p></div>
-            <div class="card"><h3>Red Team Mode</h3><p>16 automated attack tests across 10 categories. 100% blocked. Self-testing security.</p></div>
-            <div class="card"><h3>MCP + A2A</h3><p>Model Context Protocol server + Agent-to-Agent gateway with trust levels and policy routing.</p></div>
-            <div class="card"><h3>Docker Ready</h3><p>Docker Compose with AEGIS + Prometheus + Grafana. One command deployment.</p></div>
+cargo run -- autonomous --cycles 3</code></pre>
         </div>
-    </div>
-    <div class="footer">
-        <p>⛊ AEGIS OS — Because AI agents deserve security too.</p>
-        <p style="margin-top: 0.5rem;">MIT License | <a href="https://github.com/Moudaxx/AEGIS-OS" style="color: #00d4aa;">GitHub</a></p>
-    </div>
+    </section>
+
+    <footer>
+        <p class="license">License: AGPL-3.0 for open-source and non-commercial use. Commercial usage requires a separate license.</p>
+        <p>See the repository README and LICENSE file for the current terms.</p>
+    </footer>
 </body>
 </html>
