@@ -282,15 +282,60 @@ impl DiscoveryEngine {
         }
     }
 
-    // Simulations (replace with real checks in production)
-    fn simulate_port_check(&self, _target: &str, port: u16) -> bool {
-        // In production: actual TCP connect
-        matches!(port, 18789 | 8401 | 3001)
+    /// Real TCP port check with 500ms timeout.
+    fn simulate_port_check(&self, target: &str, port: u16) -> bool {
+        use std::net::TcpStream;
+        use std::time::Duration;
+        let addr = format!("{}:{}", target, port);
+        match addr.parse::<std::net::SocketAddr>() {
+            Ok(sock) => TcpStream::connect_timeout(&sock, Duration::from_millis(500)).is_ok(),
+            Err(_) => {
+                // Fallback: try with 127.0.0.1 if target isn't a valid SocketAddr
+                let fallback = format!("127.0.0.1:{}", port);
+                if let Ok(sock) = fallback.parse::<std::net::SocketAddr>() {
+                    TcpStream::connect_timeout(&sock, Duration::from_millis(500)).is_ok()
+                } else {
+                    false
+                }
+            }
+        }
     }
 
-    fn simulate_mcp_check(&self, _target: &str, port: u16) -> bool {
-        // In production: HTTP GET /mcp/tools/list
-        matches!(port, 8401 | 3001)
+    /// Real MCP endpoint check — attempts HTTP GET on /mcp/tools/list.
+    fn simulate_mcp_check(&self, target: &str, port: u16) -> bool {
+        use std::io::{Read, Write};
+        use std::net::TcpStream;
+        use std::time::Duration;
+        let addr = format!("{}:{}", target, port);
+        let sock: std::net::SocketAddr = match addr.parse() {
+            Ok(s) => s,
+            Err(_) => match format!("127.0.0.1:{}", port).parse() {
+                Ok(s) => s,
+                Err(_) => return false,
+            },
+        };
+        let stream = match TcpStream::connect_timeout(&sock, Duration::from_millis(500)) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+        let _ = stream.set_write_timeout(Some(Duration::from_millis(500)));
+        let mut stream = stream;
+        let request = format!(
+            "GET /mcp/tools/list HTTP/1.1\r\nHost: {}:{}\r\nConnection: close\r\n\r\n",
+            target, port
+        );
+        if stream.write_all(request.as_bytes()).is_err() {
+            return false;
+        }
+        let mut buf = [0u8; 256];
+        match stream.read(&mut buf) {
+            Ok(n) if n > 0 => {
+                let response = String::from_utf8_lossy(&buf[..n]);
+                response.contains("200") || response.contains("mcp") || response.contains("tools")
+            }
+            _ => false,
+        }
     }
 
     pub fn agent_count(&self) -> usize { self.agents.len() }
