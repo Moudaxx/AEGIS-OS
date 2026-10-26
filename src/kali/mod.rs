@@ -239,7 +239,16 @@ impl McpKaliServer {
         Ok(result)
     }
 
-    fn simulate_scan(&self, tool: &KaliTool, _target: &str) -> Vec<Finding> {
+    /// Run a real scan using system tools when available, with static fallback.
+    fn simulate_scan(&self, tool: &KaliTool, target: &str) -> Vec<Finding> {
+        // Try real scanning first
+        if let Some(real_findings) = self.try_real_scan(tool, target) {
+            if !real_findings.is_empty() {
+                return real_findings;
+            }
+        }
+
+        // Fallback: static findings per category
         match tool.category {
             KaliCategory::Scanning => vec![
                 Finding {
@@ -305,6 +314,62 @@ impl McpKaliServer {
                     remediation: "None required".into(),
                 },
             ],
+        }
+    }
+
+    /// Attempt real scanning using system tools (nmap, curl, etc.)
+    fn try_real_scan(&self, tool: &KaliTool, target: &str) -> Option<Vec<Finding>> {
+        use std::process::Command;
+        match tool.category {
+            KaliCategory::Scanning => {
+                // Try real port scan with nmap or fallback to TCP connect
+                let ports = [80, 443, 8401, 8443, 3001, 18789, 22, 8080];
+                let mut findings = Vec::new();
+                for port in ports {
+                    let addr = format!("{}:{}", target, port);
+                    if let Ok(sock) = addr.parse::<std::net::SocketAddr>() {
+                        if std::net::TcpStream::connect_timeout(
+                            &sock, std::time::Duration::from_millis(300)
+                        ).is_ok() {
+                            findings.push(Finding {
+                                title: format!("Open port {} detected", port),
+                                description: format!("TCP connection to {}:{} succeeded", target, port),
+                                severity: if port == 22 { Severity::Medium } else { Severity::Info },
+                                remediation: if port == 22 {
+                                    "Restrict SSH access with firewall rules".into()
+                                } else {
+                                    "Verify service is expected".into()
+                                },
+                            });
+                        }
+                    }
+                }
+                if findings.is_empty() { None } else { Some(findings) }
+            }
+            KaliCategory::WebApp => {
+                // Try real HTTP checks
+                let url = format!("http://{}:8401", target);
+                match Command::new("curl")
+                    .args(["-s", "-o", "/dev/null", "-w", "%{http_code}|%{content_type}", "-m", "2", &url])
+                    .output()
+                {
+                    Ok(output) => {
+                        let resp = String::from_utf8_lossy(&output.stdout);
+                        let mut findings = Vec::new();
+                        if resp.contains("200") {
+                            findings.push(Finding {
+                                title: "HTTP service responding".into(),
+                                description: format!("GET {} returned 200", url),
+                                severity: Severity::Info,
+                                remediation: "Service is live".into(),
+                            });
+                        }
+                        if findings.is_empty() { None } else { Some(findings) }
+                    }
+                    Err(_) => None,
+                }
+            }
+            _ => None,
         }
     }
 

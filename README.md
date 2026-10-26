@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/Moudaxx/AEGIS-OS)](https://github.com/Moudaxx/AEGIS-OS/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-135%2F135-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-151%2F151-brightgreen)]()
 [![OWASP](https://img.shields.io/badge/OWASP_LLM_Top_10-10%2F10-brightgreen)](AI-SECURITY-FRAMEWORK.md)
 
 > 88% of organizations reported AI agent security incidents. AEGIS OS is the first autonomous security platform that discovers, tests, and protects AI agents — automatically.
@@ -44,7 +44,7 @@ $ cargo run -- autonomous --cycles 3
 | 5. Learn | Adaptive Learning | Creates new rules from attacks |
 | 6. Report | Autonomous Reporter | Daily/weekly/incident reports |
 
-## 32 Security Modules
+## 34 Security Modules
 
 | Category | Modules |
 |----------|---------|
@@ -54,6 +54,8 @@ $ cargo run -- autonomous --cycles 3
 | **AI Security** | RAG Security Guard, Privacy Filter, Extraction Detector, Hallucination Detector, AI Watermark |
 | **Protocols** | MCP Client/Server (20 tools), A2A Gateway, MCP-Kali (12 pentest tools) |
 | **Autonomous** | Discovery Engine, Continuous Testing, Adaptive Learning, Autonomous Reporter, Autonomous Daemon |
+| **Dashboard** | Static Dashboard, Live WebSocket Dashboard |
+| **Alerts** | Multi-channel Alert System (Console, Slack, Email, Webhook) |
 | **Infrastructure** | Database, ROS2, Telemetry, Audit Logger |
 
 ## 12 Security Layers

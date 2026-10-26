@@ -31,6 +31,8 @@ mod learning;
 mod reporter;
 mod autonomous;
 mod dashboard;
+mod ws_dashboard;
+mod alerts;
 use anyhow::Result;
 use serde::Deserialize;
 use std::fs;
