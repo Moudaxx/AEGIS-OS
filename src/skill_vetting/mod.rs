@@ -65,17 +65,24 @@ impl SkillVetter {
     }
 
     fn static_analysis(&self, code: &str) -> bool {
+        // Patterns are matched against code lowercased with all whitespace
+        // removed, so "EVAL (x)" or "rm   -rf" can't slip through.
         let dangerous = vec![
-            "rm -rf",
+            "rm-rf",
             "exec(",
             "eval(",
             "system(",
             "subprocess",
             "__import__",
+            "os.popen",
+            "child_process",
+            "|sh",
+            "|bash",
         ];
+        let squashed: String = code.to_lowercase().chars().filter(|c| !c.is_whitespace()).collect();
 
         for pattern in &dangerous {
-            if code.contains(pattern) {
+            if squashed.contains(pattern) {
                 println!("[AEGIS] Static analysis FAILED: dangerous pattern '{}'", pattern);
                 return false;
             }
@@ -86,8 +93,9 @@ impl SkillVetter {
 
     fn dependency_check(&self, code: &str) -> bool {
         let banned_deps = vec!["malware", "cryptominer", "backdoor"];
+        let lower = code.to_lowercase();
         for dep in &banned_deps {
-            if code.contains(dep) {
+            if lower.contains(dep) {
                 println!("[AEGIS] Dependency check FAILED: banned dep '{}'", dep);
                 return false;
             }

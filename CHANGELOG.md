@@ -18,8 +18,20 @@
 - `/api/v1/redteam` runs a real 19-probe corpus (16 attacks + 3 benign controls) against the live filter and returns per-probe results. Previously it returned a hardcoded 100%. Dashboard and `/metrics` report the last real score.
 - Version reported by `/health`, `/version` and `/metrics` comes from `Cargo.toml` (now 4.1.0).
 
+### Red Team engine — real attacks (`cargo run -- red-team`)
+- `RedTeamEngine` previously returned `passed = true` for every test without running anything. Each of the 16 tests now runs real attack inputs against the real module, plus a benign control so that blocking everything doesn't count as a pass.
+- Running it surfaced these bugs, now fixed (all reproduced on the previous `main`):
+  - **CapabilityToken privilege escalation**: `tools.*` granted `toolsadmin.delete` (prefix check didn't include the dot).
+  - **StateMonitor hash collision**: fields were hashed by plain concatenation, so dropping `capabilities` and moving its bytes into `agent_id` passed `verify_config`. Hashing is now length-prefixed.
+  - **ApiGateway rate-limit bypass**: buckets were keyed on the raw path, so rotating `:id` gave unlimited requests. Now keyed on the route pattern.
+  - **SkillVetter bypass**: `EVAL(`, `exec (`, `rm   -rf` were approved. Matching is now case/whitespace-insensitive, with more patterns (`os.popen`, `child_process`, `| sh`).
+  - **FilesystemJail traversal**: `%2E%2E` (uppercase) and double-encoded `%252e` weren't caught. Paths are now fully percent-decoded, and any `.`/`..` component, null byte or relative path is rejected.
+  - **InputSanitizer**: zero-width/full-width/homoglyph/base64/Unicode-tag obfuscation bypassed it. It now uses the shared normalizing filter.
+- New: `CredentialVault::store_for/get_for` (per-agent scoping), `NetworkEgress::check_endpoint` (port 443 only; `host:port` and trailing-dot handling), `WasmSandbox::run_untrusted` (no host imports, fuel-metered so infinite loops trap).
+- The shared input filter now also decodes base64 segments.
+
 ### Tests
-- 16 new unit/HTTP tests that exercise the real router, auth and filter code (`cargo test`).
+- 18 tests exercise real crate code (`cargo test`): HTTP router/auth/filter, plus a red-team test that fails CI if any defense regresses.
 
 ## [4.0.0] - 2026-03-06
 

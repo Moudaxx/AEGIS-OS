@@ -208,7 +208,9 @@ impl ApiGateway {
         }
 
         // Rate limit check
-        let rate_key = format!("{}:{}", req.auth_token.as_deref().unwrap_or("anon"), req.path);
+        // Key on the route pattern, not the raw path: otherwise varying an
+        // ":id" segment gives every request a fresh bucket.
+        let rate_key = format!("{}:{} {}", req.auth_token.as_deref().unwrap_or("anon"), route.method, route.path);
         if !self.rate_limiter.check(&rate_key, route.rate_limit) {
             self.blocked_count += 1;
             return ApiResponse::rate_limited(&req.id);

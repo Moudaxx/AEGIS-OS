@@ -62,9 +62,14 @@ impl StateMonitor {
         let mut hasher = Sha256::new();
         let mut keys: Vec<&String> = data.keys().collect();
         keys.sort();
+        // Length-prefix every key and value: plain concatenation let
+        // {"a":"bc"} and {"ab":"c"} hash identically (field-boundary collision).
         for key in keys {
+            let value = data.get(key).unwrap();
+            hasher.update((key.len() as u64).to_le_bytes());
             hasher.update(key.as_bytes());
-            hasher.update(data.get(key).unwrap().as_bytes());
+            hasher.update((value.len() as u64).to_le_bytes());
+            hasher.update(value.as_bytes());
         }
         format!("{:x}", hasher.finalize())[..16].to_string()
     }

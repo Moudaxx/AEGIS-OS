@@ -32,7 +32,13 @@ impl InputSanitizer {
             "```system",
         ];
 
-        let input_lower = input.to_lowercase();
+        // Shared normalizing filter: catches zero-width, full-width, homoglyph,
+        // separator, base64 and Unicode-tag obfuscation of known patterns.
+        if let crate::server::filter::FilterVerdict::Block(reason) = crate::server::filter::check(input) {
+            return Err(format!("[AEGIS] Prompt injection detected: {}", reason));
+        }
+
+        let input_lower = crate::server::filter::normalize(input);
 
         for pattern in &injection_patterns {
             if input_lower.contains(&pattern.to_lowercase()) {
