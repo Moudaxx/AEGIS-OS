@@ -87,34 +87,40 @@ Layer 12: Risk Scoring (4D) + Audit + SIEM Export
 | DeepSeek | Chat | ✅ Built |
 
 ## Security Test Results
+```bash
+cargo test          # 54 tests, all against the real aegis_os library
+cargo run -- red-team
 ```
-Integration Tests:    75/75   (100%) ✅
-Advanced Security:    60/60   (100%) ✅
-Red Team Tests:       16/16   (100%) ✅
-OWASP LLM Top 10:    10/10   (100%) ✅
-Total:               151 tests — all passing
 ```
+Unit tests (server, filter, red team):   18 ✅
+tests/security_integration.rs:           20 ✅
+tests/advanced_security.rs:              16 ✅
+Red Team engine:                         16/16 attacks blocked ✅
+```
+
+Every test calls the real modules. Red-team tests send real attack inputs to the real defenses,
+and each one also checks that a benign input still passes. CI fails if any defense regresses.
 
 ### What's Tested
 
-| Test Suite | Tests | Coverage |
-|------------|-------|----------|
-| Capability Tokens | 12 | Wildcards, TTL, expiry |
-| Credential Vault | 8 | Store, revoke, TTL |
-| Skill Vetting | 6 | Static analysis, deps, sandbox |
-| Input Sanitization | 11 | 21 injection patterns |
-| Filesystem Jail | 12 | Traversal, blocked paths |
-| Network Egress | 12 | Allowlist, blocklist, ports |
-| Risk Scoring | 3 | Normal → suspicious → compromised |
-| AI Backend | 4 | Sanitize → AI → verify |
-| Attack Simulation | 7 | Multi-stage attack chain |
-| RAG Security | 7 | Poisoning, injection, trust |
-| Privacy Filter | 16 | API keys, tokens, PII |
-| Extraction Detection | 9 | Probing, system prompt theft |
-| Hallucination | 8 | Overconfidence, impossible claims |
-| Watermark | 8 | Stamp, verify, tamper detection |
-| Kali Authorization | 6 | Target allowlist |
-| Combined Attack | 6 | RAG + extraction + leak + tamper |
+| Area | What the tests attack |
+|------|----------------------|
+| Capability tokens | wildcard boundary (`tools.*` ≠ `toolsadmin.*`), expiry |
+| Credential vault | TTL, revocation, per-agent scoping |
+| Input sanitization | plain, zero-width, full-width, homoglyph, base64, Unicode-tag injection |
+| Filesystem jail | `..` in raw / `%2e` / `%2E` / `%252e` / backslash form, NUL, sensitive paths |
+| Network egress | allowlist, blocklist, look-alike hosts, trailing dot, port 443 only |
+| Skill vetting | obfuscated dangerous calls, banned deps, WASM skills actually executed |
+| WASM sandbox | no host imports, fuel limit stops infinite loops |
+| State integrity | immutable-field changes, hash field-boundary collisions |
+| Risk / policy / gateway | escalation to kill, topic/model/token/rate rules, route-level rate limit |
+| RAG security | untrusted source, tampering, obfuscated poisoning |
+| Privacy filter | API keys, private keys, Luhn-valid card numbers, full-token UTF-8-safe redaction |
+| Extraction / hallucination | system-prompt probing, query floods, overconfident/impossible claims |
+| Watermark | HMAC-SHA256, full content hash, model/provider tamper, wrong key |
+| MCP-Kali | target allowlist, wildcard boundary, shell metacharacters in target |
+
+> Note: MCP-Kali tool results are still simulated (`simulate_scan`). Only target authorization is enforced and tested.
 
 ## HTTP API
 ```bash

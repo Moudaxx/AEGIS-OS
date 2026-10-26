@@ -178,11 +178,18 @@ impl McpKaliServer {
 
     // Check if target is authorized
     fn check_target(&self, target: &str) -> bool {
-        for allowed in &self.authorized_targets {
-            if allowed == target { return true; }
-            if allowed.starts_with("*.") {
-                let domain = &allowed[2..];
-                if target.ends_with(domain) { return true; }
+        let norm = target.trim().trim_end_matches('.').to_lowercase();
+        // A "target" must never smuggle shell syntax into a command template.
+        let unsafe_chars = norm.is_empty()
+            || norm.contains(|c: char| c.is_whitespace() || matches!(c, ';' | '|' | '&' | '`' | '$' | '>' | '<'));
+        if !unsafe_chars {
+            for allowed in &self.authorized_targets {
+                let allowed = allowed.to_lowercase();
+                if allowed == norm { return true; }
+                // "*.lab.local" matches "a.lab.local" — not "evillab.local"
+                if let Some(domain) = allowed.strip_prefix("*.") {
+                    if norm.ends_with(&format!(".{}", domain)) { return true; }
+                }
             }
         }
         println!("[MCP-KALI] BLOCKED: target '{}' not authorized", target);

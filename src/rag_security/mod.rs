@@ -108,8 +108,14 @@ impl RagSecurityGuard {
             }
         }
 
-        // 3. Check for injection patterns
-        let lower = doc.content.to_lowercase();
+        // 3. Check for injection patterns. The shared filter normalizes first, so
+        //    zero-width, homoglyph, full-width, base64 and Unicode-tag
+        //    obfuscation can't hide them.
+        if let crate::server::filter::FilterVerdict::Block(reason) = crate::server::filter::check(&doc.content) {
+            println!("[RAG-SEC] POISONED: {} in doc {}", reason, doc.id);
+            return RagCheckResult::Poisoned { reason: format!("Injection: {}", reason) };
+        }
+        let lower = crate::server::filter::normalize(&doc.content);
         for pattern in &self.poison_patterns {
             if lower.contains(&pattern.to_lowercase()) {
                 println!("[RAG-SEC] POISONED: injection pattern '{}' in doc {}", pattern, doc.id);
