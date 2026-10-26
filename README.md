@@ -116,27 +116,38 @@ Total:               151 tests — all passing
 | Kali Authorization | 6 | Target allowlist |
 | Combined Attack | 6 | RAG + extraction + leak + tamper |
 
-## 12 HTTP Endpoints
+## HTTP API
 ```bash
-# Start server
+export AEGIS_ADMIN_TOKEN=$(openssl rand -hex 32)   # optional: otherwise a one-time token is printed
 cargo run -- serve          # HTTP :8401
-cargo run -- serve-tls      # HTTPS :8443
+cargo run -- serve-tls      # HTTPS :8443 (refuses to start without certs/cert.pem + certs/key.pem)
+
+curl -H "Authorization: Bearer $AEGIS_ADMIN_TOKEN" -X POST localhost:8401/api/v1/redteam
 ```
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/health` | GET | No | Health check |
+There are no built-in credentials. Tokens come from `AEGIS_ADMIN_TOKEN`, `AEGIS_OPERATOR_TOKEN`,
+`AEGIS_VIEWER_TOKEN` and `AEGIS_AGENT_TOKEN` (24+ chars) and are kept in memory only as SHA-256 hashes.
+Prompts are never written to the audit log; only a hash fingerprint and length are recorded.
+The old `aegis-*-token` demo values work only when `AEGIS_DEMO_TOKENS=1`.
+
+| Endpoint | Method | Permission | Description |
+|----------|--------|------------|-------------|
+| `/health` | GET | Public | Health check |
+| `/version` | GET | Public | Version info |
+| `/metrics` | GET | Public | Prometheus metrics (aggregate counters only) |
+| `/api/v1/dashboard` | GET | Any role | Dashboard JSON |
+| `/api/v1/agents` | GET | Any role | List agents |
+| `/api/v1/audit` | GET | Any role | Last 1000 audit events |
+| `/mcp/tools/list` | POST | Any role | MCP tool list |
+| `/mcp/tools/call` | POST | Admin, Operator, Agent | MCP tool call (tool + params filtered) |
 | `/api/v1/agents/run` | POST | Admin, Operator | Run agent |
-| `/api/v1/agents/stop` | POST | Admin, Operator | Stop agent |
-| `/api/v1/agents/list` | GET | All | List agents |
-| `/api/v1/agents/status` | GET | All | Agent status |
-| `/api/v1/inference` | POST | Admin, Operator, Agent | AI inference |
-| `/api/v1/redteam` | POST | Admin | Red team test |
-| `/api/v1/tools` | POST | Admin, Operator, Agent | Execute tool |
-| `/api/v1/audit` | GET | Admin, Operator, Viewer | Audit logs |
-| `/api/v1/metrics` | GET | All | Prometheus metrics |
-| `/api/v1/dashboard` | GET | All | Dashboard JSON |
-| `/mcp/tools/*` | POST | MCP Auth | MCP tool calls |
+| `/api/v1/agents/stop` | POST | Admin, Operator | Stop agents |
+| `/api/v1/inference` | POST | Admin, Operator, Agent | AI inference behind the input filter |
+| `/api/v1/redteam` | POST | Admin | Runs the attack corpus against the live input filter and returns per-probe results |
+
+The input filter normalizes text before matching (case, whitespace, zero-width characters,
+full-width letters, Cyrillic/Greek homoglyphs, separators like `i.g.n.o.r.e`) and blocks
+Unicode tag-character smuggling and bidi overrides outright. Request bodies are capped at 64 KB.
 
 ## Quick Start
 ```bash
@@ -181,7 +192,7 @@ Rust, Axum, Tokio, Wasmtime, Docker, Prometheus, Grafana, GitHub Actions
 
 ## License
 
-MIT — See [LICENSE](LICENSE)
+Dual-licensed: AGPL-3.0 or commercial — see [LICENSE](LICENSE) and [COMMERCIAL.md](COMMERCIAL.md)
 
 ## Links
 

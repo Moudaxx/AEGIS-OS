@@ -21,7 +21,10 @@ config/local.*
 
 # IDE
 .vscode/
-.idea/aegis-audit.log
+.idea/
+
+# Runtime output
+aegis-audit.log
 certs/
 aegis-report.json
 aegis-dashboard.html
