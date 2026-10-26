@@ -30,8 +30,18 @@
 - New: `CredentialVault::store_for/get_for` (per-agent scoping), `NetworkEgress::check_endpoint` (port 443 only; `host:port` and trailing-dot handling), `WasmSandbox::run_untrusted` (no host imports, fuel-metered so infinite loops trap).
 - The shared input filter now also decodes base64 segments.
 
+### Real integration tests
+- Split the crate into `src/lib.rs` (library `aegis_os`) plus the CLI binary, so tests and other crates can use the real modules. Compiler warnings dropped from 138 to 20.
+- Replaced `tests/security_integration.rs` and `tests/advanced_security.rs`, which re-implemented simplified copies of each module inside the test file, with 36 tests against the real library.
+- Writing them surfaced more bugs, now fixed:
+  - **PrivacyFilter redaction panic** on multi-byte text after a secret (byte-offset slicing). Redaction also masked only the first 20 bytes of the first match: a 40-char GitHub token leaked its second half. Whole tokens are now masked, every occurrence. Luhn-validated card numbers are detected (previously only the phrase "credit card").
+  - **WatermarkSystem**: the 64-bit content hash allowed birthday collisions, and model/provider weren't signed. Now HMAC-SHA256 over the full SHA-256 and all fields, with constant-time compare.
+  - **MCP-Kali authorization**: `*.aegis.internal` authorized `evilaegis.internal`. Targets are now case-normalized, and shell metacharacters (`;`, `|`, `&`, `$`, backtick) are rejected.
+  - **RagSecurityGuard**: zero-width/homoglyph/base64 obfuscation bypassed poison detection. It now uses the shared normalizing filter.
+  - **SkillVetter**: `sandbox_test` always returned true. WASM skills now actually run in the sandbox; other skills report `sandbox_tested = false` instead of claiming a pass.
+
 ### Tests
-- 18 tests exercise real crate code (`cargo test`): HTTP router/auth/filter, plus a red-team test that fails CI if any defense regresses.
+- 54 tests, all against real crate code (`cargo test`).
 
 ## [4.0.0] - 2026-03-06
 

@@ -37,33 +37,56 @@ impl WatermarkSystem {
         }
     }
 
+    /// Full 256-bit content hash. The old 64-bit hash allowed birthday
+    /// collisions (~2^32 work): a watermark issued for one text verified another.
     fn compute_hash(content: &str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(content.as_bytes());
-        format!("{:x}", hasher.finalize())[..16].to_string()
+        format!("{:x}", Sha256::digest(content.as_bytes()))
     }
 
-    fn compute_signature(&self, content_hash: &str, agent_id: &str, timestamp: &str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(format!("{}:{}:{}:{}", self.secret_key, content_hash, agent_id, timestamp).as_bytes());
-        format!("{:x}", hasher.finalize())[..32].to_string()
+    /// HMAC-SHA256 (RFC 2104) over length-prefixed fields. Covers model and
+    /// provider too, so attribution can't be edited after signing.
+    fn compute_signature(&self, fields: &[&str]) -> String {
+        let mut msg = Vec::new();
+        for field in fields {
+            msg.extend_from_slice(&(field.len() as u64).to_le_bytes());
+            msg.extend_from_slice(field.as_bytes());
+        }
+        let mut key = [0u8; 64];
+        if self.secret_key.len() > 64 {
+            key[..32].copy_from_slice(&Sha256::digest(self.secret_key.as_bytes()));
+        } else {
+            key[..self.secret_key.len()].copy_from_slice(self.secret_key.as_bytes());
+        }
+        let ipad: Vec<u8> = key.iter().map(|b| b ^ 0x36).collect();
+        let opad: Vec<u8> = key.iter().map(|b| b ^ 0x5c).collect();
+        let inner = Sha256::new().chain_update(&ipad).chain_update(&msg).finalize();
+        let outer = Sha256::new().chain_update(&opad).chain_update(inner).finalize();
+        format!("{:x}", outer)
+    }
+
+    fn sign(&self, w: &AiWatermark) -> String {
+        self.compute_signature(&[&w.content_hash, &w.agent_id, &w.model, &w.provider, &w.timestamp.to_rfc3339()])
+    }
+
+    fn constant_time_eq(a: &str, b: &str) -> bool {
+        a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
     }
 
     // Watermark AI-generated content
     pub fn stamp(&mut self, content: &str, agent_id: &str, model: &str, provider: &str) -> AiWatermark {
         let now = Utc::now();
         let content_hash = Self::compute_hash(content);
-        let signature = self.compute_signature(&content_hash, agent_id, &now.to_rfc3339());
 
-        let watermark = AiWatermark {
+        let mut watermark = AiWatermark {
             content_hash: content_hash.clone(),
             agent_id: agent_id.to_string(),
             model: model.to_string(),
             provider: provider.to_string(),
             timestamp: now,
-            signature,
-            aegis_version: "4.0.0".to_string(),
+            signature: String::new(),
+            aegis_version: env!("CARGO_PKG_VERSION").to_string(),
         };
+        watermark.signature = self.sign(&watermark);
 
         println!("[WATERMARK] Stamped: agent={} | model={} | hash={}",
             agent_id, model, content_hash);
@@ -76,7 +99,7 @@ impl WatermarkSystem {
         let content_hash = Self::compute_hash(content);
 
         // Check content hash
-        if content_hash != watermark.content_hash {
+        if !Self::constant_time_eq(&content_hash, &watermark.content_hash) {
             println!("[WATERMARK] INVALID: content modified");
             return WatermarkVerification::Invalid {
                 reason: "Content has been modified".to_string(),
@@ -84,9 +107,8 @@ impl WatermarkSystem {
         }
 
         // Check signature
-        let expected_sig = self.compute_signature(
-            &content_hash, &watermark.agent_id, &watermark.timestamp.to_rfc3339());
-        if expected_sig != watermark.signature {
+        let expected_sig = self.sign(watermark);
+        if !Self::constant_time_eq(&expected_sig, &watermark.signature) {
             println!("[WATERMARK] INVALID: signature mismatch");
             return WatermarkVerification::Invalid {
                 reason: "Signature verification failed".to_string(),

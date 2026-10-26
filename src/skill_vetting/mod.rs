@@ -14,6 +14,9 @@ pub struct Skill {
     pub code: String,
     pub hash: String,
     pub status: VettingStatus,
+    /// True only if the skill actually executed in the WASM sandbox.
+    /// Non-WASM skills get static checks only — and callers can see that here.
+    pub sandbox_tested: bool,
 }
 
 impl Skill {
@@ -27,6 +30,7 @@ impl Skill {
             code: code.to_string(),
             hash,
             status: VettingStatus::Pending,
+            sandbox_tested: false,
         }
     }
 }
@@ -54,9 +58,16 @@ impl SkillVetter {
         }
 
         // Sandbox test
-        if !self.sandbox_test(&skill.name) {
-            skill.status = VettingStatus::Rejected;
-            return false;
+        match self.sandbox_test(&skill.code) {
+            Some(false) => {
+                skill.status = VettingStatus::Rejected;
+                return false;
+            }
+            Some(true) => skill.sandbox_tested = true,
+            None => {
+                skill.sandbox_tested = false;
+                println!("[AEGIS] Sandbox test SKIPPED: '{}' is not WASM (static checks only)", skill.name);
+            }
         }
 
         skill.status = VettingStatus::Approved;
@@ -104,8 +115,27 @@ impl SkillVetter {
         true
     }
 
-    fn sandbox_test(&self, name: &str) -> bool {
-        println!("[AEGIS] Sandbox test PASSED ✓ | Skill: {}", name);
-        true
+    /// Execute WASM/WAT skills in the sandbox (no host imports, fuel-limited).
+    /// Returns None for non-WASM skills. Previously this returned true for
+    /// every skill without running anything.
+    fn sandbox_test(&self, code: &str) -> Option<bool> {
+        let is_wasm = code.trim_start().starts_with("(module") || code.as_bytes().starts_with(b"\0asm");
+        if !is_wasm {
+            return None;
+        }
+        let sandbox = match crate::isolation::WasmSandbox::new() {
+            Ok(s) => s,
+            Err(_) => return Some(false), // fail closed
+        };
+        match sandbox.run_untrusted(code, crate::isolation::WasmSandbox::DEFAULT_FUEL) {
+            Ok(()) => {
+                println!("[AEGIS] Sandbox test PASSED ✓ (executed in WASM)");
+                Some(true)
+            }
+            Err(e) => {
+                println!("[AEGIS] Sandbox test FAILED: {}", e);
+                Some(false)
+            }
+        }
     }
 }
