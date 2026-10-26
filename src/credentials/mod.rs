@@ -47,6 +47,16 @@ impl CredentialVault {
         self.store.insert(key.to_string(), cred);
     }
 
+    /// Store a credential owned by one agent. Only that agent can read it via `get_for`.
+    pub fn store_for(&mut self, owner: &str, key: &str, value: &str, ttl_minutes: i64) {
+        self.store(&format!("{}\u{1f}{}", owner, key), value, ttl_minutes);
+    }
+
+    /// Read a credential scoped to `owner`. Another agent's credentials are invisible.
+    pub fn get_for(&self, owner: &str, key: &str) -> Option<&str> {
+        self.get(&format!("{}\u{1f}{}", owner, key))
+    }
+
     pub fn get(&self, key: &str) -> Option<&str> {
         if let Some(cred) = self.store.get(key) {
             if cred.is_expired() {
@@ -126,7 +136,8 @@ impl CapabilityToken {
         self.capabilities.iter().any(|c| {
             c == cap
             || c == "*"
-            || (c.ends_with(".*") && cap.starts_with(&c[..c.len()-2]))
+            // "tools.*" grants "tools.read" but not "toolsadmin.delete"
+            || (c.ends_with(".*") && cap.starts_with(&c[..c.len()-1]))
         })
     }
 

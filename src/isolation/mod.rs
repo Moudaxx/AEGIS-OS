@@ -10,7 +10,10 @@ pub struct WasmSandbox {
 
 impl WasmSandbox {
     pub fn new() -> Result<Self> {
-        let engine = Engine::default();
+        // Fuel metering bounds CPU use, so an infinite loop traps instead of hanging the host.
+        let mut config = wasmtime::Config::new();
+        config.consume_fuel(true);
+        let engine = Engine::new(&config)?;
         println!("[AEGIS] WASM Sandbox initialized");
         Ok(WasmSandbox { engine })
     }
@@ -28,6 +31,7 @@ impl WasmSandbox {
         "#;
 
         let mut store = Store::new(&self.engine, ());
+        store.set_fuel(Self::DEFAULT_FUEL)?;
         let module = Module::new(&self.engine, wat)?;
         let linker = Linker::new(&self.engine);
         let instance = linker.instantiate(&mut store, &module)?;
@@ -41,6 +45,50 @@ impl WasmSandbox {
 
         Ok(())
     }
+
+    pub const DEFAULT_FUEL: u64 = 10_000_000;
+
+    /// Run untrusted WAT/WASM with no host imports and a fuel budget.
+    /// Calls the exported `run` function. Fails if the module needs any host
+    /// capability (no imports are linked) or exhausts its fuel.
+    pub fn run_untrusted(&self, wasm: &str, fuel: u64) -> Result<()> {
+        let mut store = Store::new(&self.engine, ());
+        store.set_fuel(fuel)?;
+        let module = Module::new(&self.engine, wasm)?;
+        let linker: Linker<()> = Linker::new(&self.engine);
+        let instance = linker.instantiate(&mut store, &module)?;
+        let run = instance.get_typed_func::<(), ()>(&mut store, "run")?;
+        run.call(&mut store, ())?;
+        Ok(())
+    }
+}
+
+/// Percent-decode repeatedly (max 3 rounds) so "%252e%252e" can't hide "..".
+fn percent_decode_all(input: &str) -> String {
+    let mut cur = input.to_string();
+    for _ in 0..3 {
+        let bytes = cur.as_bytes();
+        let mut out = Vec::with_capacity(bytes.len());
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' && i + 2 < bytes.len() {
+                let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok();
+                if let Some(v) = hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
+                    out.push(v);
+                    i += 3;
+                    continue;
+                }
+            }
+            out.push(bytes[i]);
+            i += 1;
+        }
+        let next = String::from_utf8_lossy(&out).into_owned();
+        if next == cur {
+            break;
+        }
+        cur = next;
+    }
+    cur
 }
 
 // ─── Filesystem Jail (improved: path traversal + sensitive paths) ───
@@ -76,15 +124,16 @@ impl FilesystemJail {
     }
 
     pub fn check_access(&self, path: &str) -> bool {
-        let normalized = path.replace("\\", "/");
+        // Decode first (catches %2e%2e, %2E%2E, %252e…), unify separators.
+        let normalized = percent_decode_all(path).replace('\\', "/");
 
-        // Block path traversal attempts
-        if normalized.contains("/../")
-            || normalized.contains("/./")
-            || normalized.ends_with("/..")
-            || normalized.ends_with("/.")
-            || normalized.contains("..%2f")
-            || normalized.contains("%2e%2e")
+        if normalized.contains('\0') {
+            println!("[AEGIS] Null byte BLOCKED: {}", path);
+            return false;
+        }
+        // Only absolute paths; reject any "." or ".." component.
+        if !normalized.starts_with('/')
+            || normalized.split('/').any(|c| c == ".." || c == ".")
         {
             println!("[AEGIS] Path traversal BLOCKED: {}", path);
             return false;
@@ -126,6 +175,7 @@ impl FilesystemJail {
 pub struct NetworkEgress {
     allowlist: Vec<String>,
     blocklist: Vec<String>,
+    allowed_ports: Vec<u16>,
 }
 
 impl NetworkEgress {
@@ -147,11 +197,36 @@ impl NetworkEgress {
                 "discord.com".to_string(),
                 "telegram.org".to_string(),
             ],
+            allowed_ports: vec![443],
         }
     }
 
+    /// Check a host and port. All allowlisted AI APIs are HTTPS-only.
+    pub fn check_endpoint(&self, host: &str, port: u16) -> bool {
+        if !self.allowed_ports.contains(&port) {
+            println!("[AEGIS] Network egress BLOCKED (port {}): {}", port, host);
+            return false;
+        }
+        self.check_host(host)
+    }
+
+    /// Check a host, optionally written as "host:port".
     pub fn check(&self, host: &str) -> bool {
-        let host_lower = host.to_lowercase().trim().to_string();
+        match host.trim().rsplit_once(':') {
+            Some((h, p)) => match p.parse::<u16>() {
+                Ok(port) => self.check_endpoint(h, port),
+                Err(_) => {
+                    println!("[AEGIS] Network egress DENIED (malformed): {}", host);
+                    false
+                }
+            },
+            None => self.check_host(host),
+        }
+    }
+
+    fn check_host(&self, host: &str) -> bool {
+        // Trailing dot is the same DNS name ("pastebin.com." == "pastebin.com").
+        let host_lower = host.to_lowercase().trim().trim_end_matches('.').to_string();
 
         // Check blocklist first (exact match or subdomain)
         for blocked in &self.blocklist {
